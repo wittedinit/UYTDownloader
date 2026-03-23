@@ -174,6 +174,20 @@ export default function Home() {
               </span>
             ) : "Probe"}
           </button>
+          {(phase !== "input" || url) && (
+            <button
+              onClick={() => {
+                setUrl(""); setPhase("input"); setError(""); setSource(null);
+                setEntries([]); setSelected(new Set()); setFormatMode("video_audio");
+                setQuality("best"); setSponsorblock("keep"); setEmbedSubs(false);
+                setNormalizeAudio(false); setOutputFormat("original"); setVideoBitrate("auto");
+                try { sessionStorage.removeItem("uyt_probe"); } catch {}
+              }}
+              className="px-4 py-3 border border-[var(--card-border)] text-[var(--muted)] rounded-lg text-sm font-medium hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
