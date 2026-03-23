@@ -1,6 +1,6 @@
 # UYTDownloader
 
-Self-hosted YouTube download orchestration tool. Built around yt-dlp, ffmpeg, and SponsorBlock — not another downloader, but a complete management platform for offline YouTube consumption.
+Self-hosted Ultimate YouTube download orchestration tool. Built around yt-dlp, ffmpeg, and SponsorBlock — not another downloader, but a complete management platform for offline YouTube consumption.
 
 ## Features
 
