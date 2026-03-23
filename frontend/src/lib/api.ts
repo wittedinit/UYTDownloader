@@ -178,6 +178,74 @@ export async function retryJob(jobId: string) {
   return apiFetch<Job>(`/api/jobs/${jobId}/retry`, { method: "POST" });
 }
 
+// ── Subscriptions ─────────────────────────────────────────────────────
+
+export interface Subscription {
+  id: string;
+  source_id: string;
+  enabled: boolean;
+  check_interval_minutes: number;
+  last_checked_at: string | null;
+  next_check_at: string | null;
+  auto_download: boolean;
+  format_mode: string;
+  quality: string;
+  sponsorblock_action: string;
+  source_title: string | null;
+  source_type: string | null;
+  entry_count: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionFilter {
+  id: string;
+  filter_type: string;
+  value: string | null;
+  enabled: boolean;
+}
+
+export interface SubscriptionDetail extends Subscription {
+  filters: SubscriptionFilter[];
+}
+
+export async function listSubscriptions() {
+  return apiFetch<{ subscriptions: Subscription[]; total: number }>("/api/subscriptions");
+}
+
+export async function createSubscription(params: {
+  source_id: string;
+  check_interval_minutes?: number;
+  auto_download?: boolean;
+  format_mode?: string;
+  quality?: string;
+  sponsorblock_action?: string;
+  filters?: { filter_type: string; value?: string; enabled?: boolean }[];
+}) {
+  return apiFetch<SubscriptionDetail>("/api/subscriptions", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+export async function deleteSubscription(subId: string) {
+  return apiFetch<void>(`/api/subscriptions/${subId}`, { method: "DELETE" });
+}
+
+export async function triggerSubscriptionCheck(subId: string) {
+  return apiFetch<{ task_id: string; status: string }>(
+    `/api/subscriptions/${subId}/check`,
+    { method: "POST" }
+  );
+}
+
+export async function updateSubscription(subId: string, updates: Record<string, unknown>) {
+  return apiFetch<Subscription>(`/api/subscriptions/${subId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
 // ── Health ────────────────────────────────────────────────────────────
 
 export async function getHealth() {

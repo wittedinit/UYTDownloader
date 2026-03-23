@@ -98,9 +98,10 @@ export default function Home() {
     <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">UYTDownloader</h1>
-        <a href="/jobs" className="text-sm text-blue-600 hover:underline">
-          View Jobs
-        </a>
+        <div className="flex gap-3">
+          <a href="/subscriptions" className="text-sm text-blue-600 hover:underline">Subscriptions</a>
+          <a href="/jobs" className="text-sm text-blue-600 hover:underline">Jobs</a>
+        </div>
       </div>
 
       {/* URL Input */}

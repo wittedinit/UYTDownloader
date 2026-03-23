@@ -76,9 +76,10 @@ export default function JobsPage() {
     <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Jobs</h1>
-        <a href="/" className="text-sm text-blue-600 hover:underline">
-          New Download
-        </a>
+        <div className="flex gap-3">
+          <a href="/subscriptions" className="text-sm text-blue-600 hover:underline">Subscriptions</a>
+          <a href="/" className="text-sm text-blue-600 hover:underline">New Download</a>
+        </div>
       </div>
 
       {/* Filter */}

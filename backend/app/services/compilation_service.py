@@ -250,8 +250,11 @@ def _add_chapters(input_files: list[dict], output_path: str) -> dict:
             title = ch["title"].replace("=", "\\=").replace(";", "\\;").replace("#", "\\#").replace("\\", "\\\\")
             f.write(f"title={title}\n")
 
-    # Apply chapters
-    chaptered_path = output_path + ".tmp"
+    # Apply chapters — use a temp file in the same directory
+    import tempfile
+    out_dir = os.path.dirname(output_path)
+    fd, chaptered_path = tempfile.mkstemp(suffix=os.path.splitext(output_path)[1], dir=out_dir)
+    os.close(fd)
     cmd = [
         "ffmpeg", "-y",
         "-i", output_path,

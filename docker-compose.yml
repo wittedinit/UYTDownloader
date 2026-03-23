@@ -86,6 +86,25 @@ services:
     #           capabilities: [gpu, video]
     restart: unless-stopped
 
+  beat:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    entrypoint: ["tini", "--"]
+    command: ["celery", "-A", "app.celery_app:celery", "beat", "--loglevel=info"]
+    environment:
+      - UYT_DATABASE_URL=postgresql+asyncpg://uyt:uyt@postgres:5432/uyt
+      - UYT_DATABASE_URL_SYNC=postgresql+psycopg2://uyt:uyt@postgres:5432/uyt
+      - UYT_REDIS_URL=redis://redis:6379/0
+      - UYT_CONFIG_DIR=/config
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ./config:/config
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build:
       context: .
