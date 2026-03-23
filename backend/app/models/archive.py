@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -9,6 +9,7 @@ from app.models.base import Base
 
 class ArchiveRecord(Base):
     __tablename__ = "archive_records"
+    __table_args__ = (UniqueConstraint("external_video_id", "output_signature_hash", name="uq_archive_dedup"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     external_video_id: Mapped[str] = mapped_column(String(64), index=True)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -268,23 +269,34 @@ async def delete_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     await db.delete(job)
 
 
+class BulkDeleteRequest(PydanticBaseModel):
+    job_ids: list[str]
+
+
 @router.post("/bulk-delete", status_code=200)
 async def bulk_delete_jobs(
-    body: dict,
+    body: BulkDeleteRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Delete multiple jobs by ID. Skips running jobs."""
-    job_ids = body.get("job_ids", [])
-    if not job_ids:
+    if not body.job_ids:
         return {"deleted": 0, "skipped": 0}
+
+    # Parse UUIDs safely
+    parsed_ids = []
+    for jid in body.job_ids:
+        try:
+            parsed_ids.append(uuid.UUID(jid))
+        except ValueError:
+            continue
+
+    # Fetch all in one query
+    result = await db.execute(select(Job).where(Job.id.in_(parsed_ids)))
+    jobs = result.scalars().all()
 
     deleted = 0
     skipped = 0
-    for jid in job_ids:
-        result = await db.execute(select(Job).where(Job.id == uuid.UUID(jid)))
-        job = result.scalar_one_or_none()
-        if not job:
-            continue
+    for job in jobs:
         if job.status == JobStatus.RUNNING:
             skipped += 1
             continue
