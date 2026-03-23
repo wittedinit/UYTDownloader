@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Build
+.next/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker volumes (local dev data)
+config/
+downloads/
+work/
+postgres_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg
+.eggs/
+*.egg-info/
+
+# Alembic versions are tracked
+!backend/alembic/versions/
+
+# Frontend build cache
+frontend/.next/
+frontend/node_modules/

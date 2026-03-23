@@ -1,0 +1,102 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: uyt
+      POSTGRES_PASSWORD: uyt
+      POSTGRES_DB: uyt
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uyt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    ports:
+      - "${UYT_PORT:-8000}:8000"
+    environment:
+      - UYT_DATABASE_URL=postgresql+asyncpg://uyt:uyt@postgres:5432/uyt
+      - UYT_DATABASE_URL_SYNC=postgresql+psycopg2://uyt:uyt@postgres:5432/uyt
+      - UYT_REDIS_URL=redis://redis:6379/0
+      - UYT_CONFIG_DIR=/config
+      - UYT_OUTPUT_DIR=/downloads
+      - UYT_WORK_DIR=/work
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads
+      - ./work:/work
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      - UYT_DATABASE_URL=postgresql+asyncpg://uyt:uyt@postgres:5432/uyt
+      - UYT_DATABASE_URL_SYNC=postgresql+psycopg2://uyt:uyt@postgres:5432/uyt
+      - UYT_REDIS_URL=redis://redis:6379/0
+      - UYT_CONFIG_DIR=/config
+      - UYT_OUTPUT_DIR=/downloads
+      - UYT_WORK_DIR=/work
+      - UYT_CONCURRENCY_MODE=${UYT_CONCURRENCY_MODE:-balanced}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-void}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,video,utility}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads
+      - ./work:/work
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # GPU passthrough: uncomment deploy section if NVIDIA GPU is available
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu, video]
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "${UYT_FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:${UYT_PORT:-8000}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
