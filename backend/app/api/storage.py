@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from app.services.storage_service import (
     CLEANUP_STRATEGIES,
@@ -46,7 +46,7 @@ async def run_retention(
     Use dry_run=true to preview without deleting.
     """
     if retention not in RETENTION_PRESETS:
-        return {"error": f"Unknown retention preset: {retention}. Options: {list(RETENTION_PRESETS.keys())}"}
+        raise HTTPException(status_code=400, detail=f"Unknown retention preset: {retention}. Options: {list(RETENTION_PRESETS.keys())}")
     return enforce_retention(retention, dry_run=dry_run)
 
 
@@ -61,5 +61,5 @@ async def run_disk_guard(
     Use dry_run=true to preview without deleting.
     """
     if strategy not in CLEANUP_STRATEGIES:
-        return {"error": f"Unknown strategy: {strategy}. Options: {list(CLEANUP_STRATEGIES.keys())}"}
+        raise HTTPException(status_code=400, detail=f"Unknown strategy: {strategy}. Options: {list(CLEANUP_STRATEGIES.keys())}")
     return enforce_disk_guard(min_free_pct=min_free_pct, strategy=strategy, dry_run=dry_run)

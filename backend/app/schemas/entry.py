@@ -20,11 +20,6 @@ class EntryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class EntryDetail(EntryOut):
-    metadata_json: dict[str, Any] | None = None
-    format_snapshot: FormatSnapshotOut | None = None
-
-
 class FormatSnapshotOut(BaseModel):
     id: uuid.UUID
     fetched_at: datetime
@@ -34,6 +29,11 @@ class FormatSnapshotOut(BaseModel):
     chapters_json: list[dict[str, Any]] | None = None
 
     model_config = {"from_attributes": True}
+
+
+class EntryDetail(EntryOut):
+    metadata_json: dict[str, Any] | None = None
+    format_snapshot: FormatSnapshotOut | None = None
 
 
 class EntryListResponse(BaseModel):

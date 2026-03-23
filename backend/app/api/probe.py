@@ -8,15 +8,13 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
 from app.database import get_db
 from app.models.entry import Entry
 from app.models.format_snapshot import FormatSnapshot
 from app.models.source import Source
 from app.models.source_entry import SourceEntry
 from app.schemas.entry import EntryOut, FormatSnapshotOut
-from app.schemas.probe import ProbeRequest, ProbeResponse, ProbeResult
+from app.schemas.probe import ProbeRequest, ProbeResponse
 from app.schemas.source import SourceOut
 from app.worker.tasks import run_probe
 

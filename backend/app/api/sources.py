@@ -34,7 +34,8 @@ async def list_sources(
         stmt = stmt.where(Source.type == type)
         count_stmt = count_stmt.where(Source.type == type)
     if search:
-        pattern = f"%{search}%"
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         stmt = stmt.where(Source.title.ilike(pattern) | Source.uploader.ilike(pattern))
         count_stmt = count_stmt.where(
             Source.title.ilike(pattern) | Source.uploader.ilike(pattern)
