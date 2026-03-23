@@ -9,6 +9,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     const body = await res.text();
     throw new Error(`API ${res.status}: ${body}`);
   }
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
   return res.json();
 }
 
@@ -115,7 +118,9 @@ export async function pollProbe(probeId: string) {
   return apiFetch<{
     status: string;
     probe_id: string;
-    source?: Source & { entries?: Entry[] };
+    source?: Source;
+    entries?: Entry[];
+    entry_count?: number;
     format_snapshot?: FormatSnapshot;
     error?: string;
   }>(`/api/probe/${probeId}`);

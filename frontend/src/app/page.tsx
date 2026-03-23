@@ -32,7 +32,7 @@ export default function Home() {
         const result = await pollProbe(probe_id);
         if (result.status === "completed" && result.source) {
           setSource(result.source);
-          const allEntries = result.source.entries || [];
+          const allEntries = result.entries || result.source.entries || [];
           setEntries(allEntries);
           setSelected(new Set(allEntries.map((e) => e.id)));
           setPhase("select");
