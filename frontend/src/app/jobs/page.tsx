@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { listJobs, cancelJob, retryJob, getJob, type Job, type JobDetail } from "@/lib/api";
+import { listJobs, cancelJob, retryJob, getJob, bulkDeleteJobs, deleteJob, type Job, type JobDetail } from "@/lib/api";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-slate-500/10 text-slate-400",
@@ -18,6 +18,19 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("");
   const [detail, setDetail] = useState<JobDetail | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleJob = (id: string) => setSelected((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleAll = () => { if (selected.size === jobs.length) setSelected(new Set()); else setSelected(new Set(jobs.map((j) => j.id))); };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Delete ${selected.size} job${selected.size !== 1 ? "s" : ""} from history?`)) return;
+    try { await bulkDeleteJobs(Array.from(selected)); setSelected(new Set()); fetchJobs(); } catch {}
+  };
+
+  const handleDeleteOne = async (id: string) => {
+    try { await deleteJob(id); setSelected((p) => { const n = new Set(p); n.delete(id); return n; }); fetchJobs(); } catch {}
+  };
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -66,7 +79,20 @@ export default function JobsPage() {
             {s || "All"}
           </button>
         ))}
-        <span className="text-sm text-[var(--muted)] self-center ml-auto">{total} total</span>
+        <div className="flex items-center gap-3 ml-auto">
+          {selected.size > 0 && (
+            <button onClick={handleBulkDelete}
+              className="px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
+              Delete {selected.size} job{selected.size !== 1 ? "s" : ""}
+            </button>
+          )}
+          {jobs.length > 0 && (
+            <button onClick={toggleAll} className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
+              {selected.size === jobs.length ? "Deselect" : "Select All"}
+            </button>
+          )}
+          <span className="text-sm text-[var(--muted)]">{total} total</span>
+        </div>
       </div>
 
       {loading ? (
@@ -76,8 +102,10 @@ export default function JobsPage() {
       ) : (
         <div className="space-y-2">
           {jobs.map((job) => (
-            <div key={job.id} className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 transition-colors hover:border-[var(--muted)]">
+            <div key={job.id} className={`bg-[var(--card)] border rounded-xl p-4 transition-colors hover:border-[var(--muted)] ${selected.has(job.id) ? "border-indigo-500/40 bg-indigo-500/5" : "border-[var(--card-border)]"}`}>
               <div className="flex items-center gap-4">
+                <input type="checkbox" checked={selected.has(job.id)} onChange={() => toggleJob(job.id)}
+                  className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500 flex-shrink-0" />
                 {job.entry_thumbnail && (
                   <img src={job.entry_thumbnail} alt="" className="w-20 h-12 rounded-lg object-cover flex-shrink-0" />
                 )}
@@ -110,6 +138,9 @@ export default function JobsPage() {
                   )}
                   {job.status === "failed" && (
                     <button onClick={() => handleRetry(job.id)} className="px-3 py-1.5 text-xs font-medium border border-indigo-500/30 text-indigo-400 rounded-lg hover:bg-indigo-500/10 transition-colors">Retry</button>
+                  )}
+                  {job.status !== "running" && (
+                    <button onClick={() => handleDeleteOne(job.id)} className="px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">Delete</button>
                   )}
                 </div>
               </div>

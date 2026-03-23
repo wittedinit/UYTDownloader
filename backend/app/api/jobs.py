@@ -256,6 +256,44 @@ async def retry_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return _job_to_out(job)
 
 
+@router.delete("/{job_id}", status_code=204)
+async def delete_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Delete a job and its stages/artifacts from the database."""
+    result = await db.execute(select(Job).where(Job.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status == JobStatus.RUNNING:
+        raise HTTPException(status_code=409, detail="Cannot delete a running job — cancel it first")
+    await db.delete(job)
+
+
+@router.post("/bulk-delete", status_code=200)
+async def bulk_delete_jobs(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete multiple jobs by ID. Skips running jobs."""
+    job_ids = body.get("job_ids", [])
+    if not job_ids:
+        return {"deleted": 0, "skipped": 0}
+
+    deleted = 0
+    skipped = 0
+    for jid in job_ids:
+        result = await db.execute(select(Job).where(Job.id == uuid.UUID(jid)))
+        job = result.scalar_one_or_none()
+        if not job:
+            continue
+        if job.status == JobStatus.RUNNING:
+            skipped += 1
+            continue
+        await db.delete(job)
+        deleted += 1
+
+    return {"deleted": deleted, "skipped": skipped}
+
+
 def _job_to_out(job: Job) -> JobOut:
     return JobOut(
         id=job.id,

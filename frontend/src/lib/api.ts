@@ -197,6 +197,17 @@ export async function retryJob(jobId: string) {
   return apiFetch<Job>(`/api/jobs/${jobId}/retry`, { method: "POST" });
 }
 
+export async function deleteJob(jobId: string) {
+  return apiFetch<void>(`/api/jobs/${jobId}`, { method: "DELETE" });
+}
+
+export async function bulkDeleteJobs(jobIds: string[]) {
+  return apiFetch<{ deleted: number; skipped: number }>("/api/jobs/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ job_ids: jobIds }),
+  });
+}
+
 // ── Subscriptions ─────────────────────────────────────────────────────
 
 export interface Subscription {

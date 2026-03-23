@@ -1,23 +1,46 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { submitProbe, pollProbe, createJobs, createSubscription, type Entry, type Source } from "@/lib/api";
 
 type Phase = "input" | "probing" | "select" | "queued" | "error";
 
-export default function Home() {
-  const [url, setUrl] = useState("");
-  const [phase, setPhase] = useState<Phase>("input");
-  const [error, setError] = useState("");
-  const [source, setSource] = useState<Source | null>(null);
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+// Session storage helpers
+function saveSession(data: Record<string, unknown>) {
+  try { sessionStorage.setItem("uyt_probe", JSON.stringify(data)); } catch {}
+}
+function loadSession(): Record<string, unknown> | null {
+  try {
+    const raw = sessionStorage.getItem("uyt_probe");
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
 
-  const [formatMode, setFormatMode] = useState("video_audio");
-  const [quality, setQuality] = useState("best");
-  const [sponsorblock, setSponsorblock] = useState("keep");
-  const [embedSubs, setEmbedSubs] = useState(false);
-  const [normalizeAudio, setNormalizeAudio] = useState(false);
+export default function Home() {
+  const saved = typeof window !== "undefined" ? loadSession() : null;
+
+  const [url, setUrl] = useState((saved?.url as string) || "");
+  const [phase, setPhase] = useState<Phase>((saved?.phase as Phase) || "input");
+  const [error, setError] = useState((saved?.error as string) || "");
+  const [source, setSource] = useState<Source | null>((saved?.source as Source) || null);
+  const [entries, setEntries] = useState<Entry[]>((saved?.entries as Entry[]) || []);
+  const [selected, setSelected] = useState<Set<string>>(new Set((saved?.selected as string[]) || []));
+
+  const [formatMode, setFormatMode] = useState((saved?.formatMode as string) || "video_audio");
+  const [quality, setQuality] = useState((saved?.quality as string) || "best");
+  const [sponsorblock, setSponsorblock] = useState((saved?.sponsorblock as string) || "keep");
+  const [embedSubs, setEmbedSubs] = useState((saved?.embedSubs as boolean) || false);
+  const [normalizeAudio, setNormalizeAudio] = useState((saved?.normalizeAudio as boolean) || false);
+
+  // Persist state to sessionStorage on changes
+  useEffect(() => {
+    if (phase === "probing") return; // Don't save mid-probe
+    saveSession({
+      url, phase, error, source, entries,
+      selected: Array.from(selected),
+      formatMode, quality, sponsorblock, embedSubs, normalizeAudio,
+    });
+  }, [url, phase, error, source, entries, selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio]);
 
   const handleProbe = useCallback(async () => {
     if (!url.trim()) return;
