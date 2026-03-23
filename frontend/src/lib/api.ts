@@ -78,6 +78,9 @@ export interface Job {
   eta_seconds: number | null;
   error_code: string | null;
   error_message: string | null;
+  current_stage: string | null;
+  completed_stages: number;
+  total_stages: number;
   entry_id: string | null;
   entry_title: string | null;
   entry_thumbnail: string | null;

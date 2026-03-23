@@ -115,10 +115,18 @@ export default function JobsPage() {
                     <span className={`px-2 py-0.5 text-xs rounded-md font-medium ${STATUS_STYLES[job.status] || ""}`}>
                       {job.status}
                     </span>
-                    {job.status === "running" && (
+                    {job.status === "running" && job.current_stage && (
+                      <span className="text-xs text-indigo-400 font-medium capitalize">{job.current_stage}</span>
+                    )}
+                    {job.status === "running" && job.progress_pct > 0 && (
                       <span className="text-xs text-[var(--muted)]">
                         {job.progress_pct.toFixed(0)}%
                         {job.speed_bps ? ` \u00b7 ${formatBytes(job.speed_bps)}/s` : ""}
+                      </span>
+                    )}
+                    {job.status === "running" && job.total_stages > 0 && (
+                      <span className="text-xs text-[var(--muted)]">
+                        Stage {job.completed_stages + 1}/{job.total_stages}
                       </span>
                     )}
                     {job.error_message && (
@@ -127,7 +135,10 @@ export default function JobsPage() {
                   </div>
                   {job.status === "running" && (
                     <div className="mt-2 h-1.5 bg-[var(--background)] rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500" style={{ width: `${job.progress_pct}%` }} />
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500"
+                        style={{ width: `${job.total_stages > 0 ? Math.max(job.progress_pct, (job.completed_stages / job.total_stages) * 100) : job.progress_pct}%` }}
+                      />
                     </div>
                   )}
                 </div>

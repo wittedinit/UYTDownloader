@@ -115,7 +115,7 @@ async def list_jobs(
     per_page: int = Query(20, ge=1, le=100),
 ):
     """List jobs with optional status filter."""
-    query = select(Job).options(selectinload(Job.entry))
+    query = select(Job).options(selectinload(Job.entry), selectinload(Job.stages))
 
     if status:
         query = query.where(Job.status == JobStatus(status))
@@ -315,6 +315,17 @@ async def bulk_delete_jobs(
 
 
 def _job_to_out(job: Job) -> JobOut:
+    # Compute stage progress
+    stages = getattr(job, "stages", None) or []
+    current_stage = None
+    completed_stages = 0
+    total_stages = len(stages)
+    for s in sorted(stages, key=lambda x: x.order):
+        if s.status.value == "running":
+            current_stage = s.type.value.replace("_", " ")
+        if s.status.value == "completed":
+            completed_stages += 1
+
     return JobOut(
         id=job.id,
         kind=job.kind.value,
@@ -325,6 +336,9 @@ def _job_to_out(job: Job) -> JobOut:
         eta_seconds=job.eta_seconds,
         error_code=job.error_code,
         error_message=job.error_message,
+        current_stage=current_stage,
+        completed_stages=completed_stages,
+        total_stages=total_stages,
         entry_id=job.entry_id,
         entry_title=job.entry.title if job.entry else None,
         entry_thumbnail=job.entry.thumbnail_url if job.entry else None,

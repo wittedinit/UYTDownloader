@@ -68,6 +68,11 @@ class JobOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Active stage info
+    current_stage: str | None = None
+    completed_stages: int = 0
+    total_stages: int = 0
+
     # Entry summary
     entry_id: uuid.UUID | None
     entry_title: str | None = None
