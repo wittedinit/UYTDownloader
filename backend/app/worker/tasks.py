@@ -78,6 +78,20 @@ def run_storage_cleanup() -> dict:
             strategy=settings.disk_guard_strategy,
         )
 
+    # Clean up expired format snapshots
+    try:
+        from app.sync_db import get_sync_session
+        from sqlalchemy import text
+        session = get_sync_session()
+        deleted = session.execute(
+            text("DELETE FROM format_snapshots WHERE expires_at < NOW()")
+        )
+        session.commit()
+        results["expired_snapshots_cleaned"] = deleted.rowcount
+        session.close()
+    except Exception as e:
+        results["snapshot_cleanup_error"] = str(e)
+
     return results
 
 

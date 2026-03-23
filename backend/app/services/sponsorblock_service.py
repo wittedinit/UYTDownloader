@@ -181,15 +181,36 @@ def _remove_segments(input_path: str, segments: list[dict]) -> dict:
     p = Path(input_path)
     output_path = str(p.parent / f"{p.stem}.cleaned{p.suffix}")
 
-    # Build complex ffmpeg filter
+    # Detect if file has video stream
+    has_video = False
+    try:
+        vprobe = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-select_streams", "v:0", "-show_entries", "stream=codec_type",
+             "-of", "default=noprint_wrappers=1:nokey=1", input_path],
+            capture_output=True, text=True, timeout=10,
+        )
+        has_video = "video" in vprobe.stdout.strip().lower()
+    except Exception:
+        pass
+
+    # Build complex ffmpeg filter — audio-only or video+audio
     filter_parts = []
     concat_parts = []
     for i, (start, end) in enumerate(keep_ranges):
-        filter_parts.append(f"[0:v]trim=start={start}:end={end},setpts=PTS-STARTPTS[v{i}];")
+        if has_video:
+            filter_parts.append(f"[0:v]trim=start={start}:end={end},setpts=PTS-STARTPTS[v{i}];")
         filter_parts.append(f"[0:a]atrim=start={start}:end={end},asetpts=PTS-STARTPTS[a{i}];")
-        concat_parts.append(f"[v{i}][a{i}]")
+        if has_video:
+            concat_parts.append(f"[v{i}][a{i}]")
+        else:
+            concat_parts.append(f"[a{i}]")
 
-    filter_str = "".join(filter_parts) + "".join(concat_parts) + f"concat=n={len(keep_ranges)}:v=1:a=1[outv][outa]"
+    if has_video:
+        filter_str = "".join(filter_parts) + "".join(concat_parts) + f"concat=n={len(keep_ranges)}:v=1:a=1[outv][outa]"
+        maps = ["[outv]", "[outa]"]
+    else:
+        filter_str = "".join(filter_parts) + "".join(concat_parts) + f"concat=n={len(keep_ranges)}:v=0:a=1[outa]"
+        maps = ["[outa]"]
 
     from app.services.gpu_service import build_ffmpeg_cmd
     cmd = build_ffmpeg_cmd(
@@ -197,7 +218,7 @@ def _remove_segments(input_path: str, segments: list[dict]) -> dict:
         output=output_path,
         codec="transcode",
         filter_complex=filter_str,
-        maps=["[outv]", "[outa]"],
+        maps=maps,
     )
     logger.info("Removing %d segments from %s", len(time_ranges), input_path)
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)

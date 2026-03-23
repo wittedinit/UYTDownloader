@@ -9,7 +9,7 @@ from app.api.router import api_router
 from app.config import settings
 from app.database import engine
 
-app = FastAPI(title="UYTDownloader", version="0.1.0")
+app = FastAPI(title="UYTDownloader", version="0.1.1")
 app.include_router(api_router)
 
 # Serve downloaded files at /files/
@@ -41,9 +41,9 @@ async def health():
     # Redis
     try:
         import redis
-
         r = redis.Redis.from_url(settings.redis_url, socket_timeout=2)
         r.ping()
+        r.close()
         checks["redis"] = "ok"
     except Exception as e:
         checks["redis"] = f"error: {e}"

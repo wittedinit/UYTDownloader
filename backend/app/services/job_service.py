@@ -56,7 +56,8 @@ CONTAINER_MAP = {
 
 def _resolve_format_spec(format_mode: str, quality: str) -> str:
     if format_mode == "audio_only":
-        return "bestaudio/best"
+        # Use audio-specific presets if provided, otherwise best audio
+        return QUALITY_MAP.get(quality, "bestaudio/best")
     if format_mode == "video_only":
         return "bestvideo/best"
     return QUALITY_MAP.get(quality, QUALITY_MAP["best"])

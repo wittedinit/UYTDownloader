@@ -77,10 +77,12 @@ def embed_subtitles(
     for sf in sub_files:
         cmd.extend(["-i", sf["path"]])
 
-    cmd.extend(["-c", "copy"])
+    # Map all streams from input 0 once, then each subtitle input
+    cmd.extend(["-map", "0"])
     for i, sf in enumerate(sub_files):
-        cmd.extend(["-map", "0", "-map", str(i + 1)])
+        cmd.extend(["-map", str(i + 1)])
         cmd.extend([f"-metadata:s:s:{i}", f"language={sf['lang']}"])
+    cmd.extend(["-c", "copy"])
 
     # Use mov_text for mp4, srt for mkv
     if p.suffix.lower() in (".mp4", ".m4v", ".m4a"):
