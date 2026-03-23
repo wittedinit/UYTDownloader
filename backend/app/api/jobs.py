@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -179,6 +180,7 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
                 duration=a.duration,
                 mime_type=a.mime_type,
                 download_url=f"/files/{a.filename}" if a.filename else None,
+                file_exists=os.path.exists(a.path) if a.path else False,
                 created_at=a.created_at,
             )
             for a in job.artifacts

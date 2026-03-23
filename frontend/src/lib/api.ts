@@ -103,6 +103,7 @@ export interface Artifact {
   duration: number | null;
   mime_type: string | null;
   download_url: string | null;
+  file_exists: boolean;
   created_at: string;
 }
 

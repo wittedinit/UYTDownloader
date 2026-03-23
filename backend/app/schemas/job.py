@@ -49,6 +49,7 @@ class ArtifactOut(BaseModel):
     duration: float | None
     mime_type: str | None
     download_url: str | None = None
+    file_exists: bool = True
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -418,7 +418,7 @@ def _handle_download_video(session: Session, job: Job, stage: JobStage, task) ->
         if req.max_height:
             fmt = f"bestvideo[height<={req.max_height}]"
 
-    template = str(work_dir / "%(id)s.video.%(ext)s")
+    template = str(work_dir / "%(title)s.video.%(ext)s")
     output_path = wrapper.download(_video_url(entry), fmt, template)
 
     # Create artifact
@@ -451,7 +451,7 @@ def _handle_download_audio(session: Session, job: Job, stage: JobStage, task) ->
     else:
         fmt = "bestaudio"
 
-    template = str(work_dir / "%(id)s.audio.%(ext)s")
+    template = str(work_dir / "%(title)s.audio.%(ext)s")
     output_path = wrapper.download(_video_url(entry), fmt, template)
 
     artifact = Artifact(

@@ -184,14 +184,24 @@ export default function JobsPage() {
 
             {detail.artifacts.length > 0 && (
               <>
-                <h3 className="text-xs font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">Artifacts</h3>
+                <h3 className="text-xs font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">Files</h3>
                 <div className="space-y-2">
                   {detail.artifacts.map((a) => (
-                    <div key={a.id} className="p-3 bg-[var(--background)] rounded-xl">
-                      <p className="text-sm font-medium truncate">{a.filename}</p>
-                      <p className="text-xs text-[var(--muted)] mt-0.5">{a.kind} &middot; {formatBytes(a.size_bytes)}</p>
-                      {a.download_url && (
-                        <a href={a.download_url} download className="text-xs text-indigo-400 hover:text-indigo-300 mt-1 inline-block">Download</a>
+                    <div key={a.id} className={`p-3 rounded-xl ${a.file_exists ? "bg-[var(--background)]" : "bg-red-500/5 border border-red-500/20"}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{a.filename}</p>
+                          <p className="text-xs text-[var(--muted)] mt-0.5">
+                            {a.kind} &middot; {formatBytes(a.size_bytes)}
+                            {!a.file_exists && <span className="text-red-400 ml-2">Source file deleted or moved</span>}
+                          </p>
+                        </div>
+                        {a.file_exists && a.download_url && (
+                          <a href={a.download_url} download className="px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex-shrink-0 ml-3">Download</a>
+                        )}
+                      </div>
+                      {!a.file_exists && !a.download_url && (
+                        <p className="text-xs text-red-400/70 mt-1">File no longer available on server</p>
                       )}
                     </div>
                   ))}
