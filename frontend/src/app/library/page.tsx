@@ -1,15 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { listLibraryFiles, deleteLibraryFile, mergeLibraryFiles, createZip, deleteZip, type LibraryFile } from "@/lib/api";
-
-function resolveApiBase(): string {
-  if (typeof window !== "undefined") {
-    if (window.location.hostname.endsWith(".orb.local")) return "http://uyt-backend-1.orb.local:8000";
-    return `${window.location.protocol}//${window.location.hostname}:8000`;
-  }
-  return "http://localhost:8000";
-}
+import { listLibraryFiles, deleteLibraryFile, mergeLibraryFiles, createZip, deleteZip, resolveApiBase, type LibraryFile } from "@/lib/api";
 
 export default function LibraryPage() {
   const [files, setFiles] = useState<LibraryFile[]>([]);

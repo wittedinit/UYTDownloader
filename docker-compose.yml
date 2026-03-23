@@ -120,8 +120,8 @@ services:
       dockerfile: docker/frontend.Dockerfile
     ports:
       - "${UYT_FRONTEND_PORT:-3000}:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:${UYT_PORT:-8000}
+    # Note: NEXT_PUBLIC_API_URL is baked at build time in Next.js.
+    # The frontend uses dynamic URL resolution via window.location at runtime.
     depends_on:
       - backend
     restart: unless-stopped
