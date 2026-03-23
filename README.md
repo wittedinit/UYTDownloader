@@ -113,10 +113,17 @@ UYTDownloader runs as a Docker Compose stack on Unraid. To deploy:
 
 #### Browser Cookies (Optional)
 
-For age-gated or member-only content, export your YouTube cookies in Netscape format and place at:
-```
-/mnt/user/appdata/uytdownloader/config/cookies/youtube.txt
-```
+For age-gated or member-only content, export your YouTube cookies in Netscape format and place them inside your **config volume** at `cookies/youtube.txt`.
+
+The full path depends on where you mapped the `/config` volume:
+
+| Deployment | Cookie file location |
+|-----------|---------------------|
+| Unraid | `{your config path}/cookies/youtube.txt` (e.g., `/mnt/user/appdata/uytdownloader/config/cookies/youtube.txt`) |
+| Docker Compose | `./config/cookies/youtube.txt` (relative to docker-compose.yml) |
+| Custom | Wherever you mapped `/config` → put `cookies/youtube.txt` inside it |
+
+The health check at `/health` will show `cookies: present` when configured correctly.
 
 ### With NVIDIA GPU
 
@@ -268,13 +275,19 @@ GET  /health                            System health check
 | `TZ` | `UTC` | Timezone |
 | `NVIDIA_VISIBLE_DEVICES` | `void` | GPU access (`all` to enable) |
 
-### Volumes
+### Volumes (Persistent Storage)
 
-| Container Path | Purpose |
-|---------------|---------|
-| `/config` | Cookies, logs, job logs |
-| `/downloads` | Completed downloads (served via Library) |
-| `/work` | In-progress downloads, temp/staging |
+All three volumes **must be mapped to persistent storage** on your host. Without this, data is lost when containers restart.
+
+| Container Path | Purpose | What to map it to |
+|---------------|---------|-------------------|
+| `/config` | Cookies, logs, settings | A persistent config directory (e.g., `./config` or `/mnt/user/appdata/uytdownloader/config`) |
+| `/downloads` | Completed downloads (your library) | Where you want finished files stored (e.g., `./downloads` or `/mnt/user/data/media/youtube`) |
+| `/work` | In-progress downloads, temp files | A scratch directory, can be on fast storage (e.g., `./work` or `/mnt/user/appdata/uytdownloader/work`) |
+
+**Important:** The `/downloads` volume is where all your completed media lives. This is the path your Library page browses. Choose a location with enough space for your download library.
+
+**Cookies** go inside the config volume at `cookies/youtube.txt` (i.e., `{your /config mapping}/cookies/youtube.txt`).
 
 ### Quality Presets
 

@@ -175,7 +175,7 @@ Shows: database, redis, ffmpeg, yt-dlp, directory paths. All should be green.
 
 ### Browser Cookies
 
-For age-gated/member content: export YouTube cookies in Netscape format → place at `config/cookies/youtube.txt`.
+For age-gated/member content: export YouTube cookies in Netscape format → place at `cookies/youtube.txt` inside your mapped `/config` volume (e.g., `./config/cookies/youtube.txt` for Docker Compose).
 
 ### GPU Acceleration
 

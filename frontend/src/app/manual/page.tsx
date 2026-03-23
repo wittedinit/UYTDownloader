@@ -413,7 +413,7 @@ All values should show green. If any show red, the corresponding service may nee
 1. Install a browser extension that exports cookies in Netscape/HTTP format (e.g., "Get cookies.txt LOCALLY")
 2. Log into YouTube in your browser
 3. Export cookies for youtube.com
-4. Place the exported file at: \`config/cookies/youtube.txt\` (or \`/mnt/user/appdata/uytdownloader/config/cookies/youtube.txt\` on Unraid)
+4. Place the exported file inside your config volume at: \`cookies/youtube.txt\` (the full path depends on where you mapped the /config volume — e.g., \`./config/cookies/youtube.txt\` for Docker Compose)
 5. Restart the backend and worker containers
 
 The health check will show "cookies: present" when configured correctly.`,
