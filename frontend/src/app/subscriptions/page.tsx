@@ -21,7 +21,7 @@ export default function SubscriptionsPage() {
   const formatDate = (iso: string | null) => iso ? new Date(iso).toLocaleString() : "Never";
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-6 lg:p-8 max-w-screen-xl mx-auto w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1">Subscriptions</h1>
         <p className="text-sm text-[var(--muted)]">Auto-download new content from channels and playlists</p>

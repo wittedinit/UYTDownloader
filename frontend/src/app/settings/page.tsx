@@ -48,7 +48,7 @@ export default function SettingsPage() {
   const usedPct = usage ? ((usage.disk_used_gb / usage.disk_total_gb) * 100) : 0;
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-6 lg:p-8 max-w-screen-xl mx-auto w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1">Settings</h1>
         <p className="text-sm text-[var(--muted)]">Storage management, system health, and configuration</p>

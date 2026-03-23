@@ -58,7 +58,7 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-6 lg:p-8 max-w-screen-xl mx-auto w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1">Jobs</h1>
         <p className="text-sm text-[var(--muted)]">Monitor download progress and manage queued jobs</p>

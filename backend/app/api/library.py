@@ -80,6 +80,67 @@ async def delete_file(filename: str):
     os.unlink(file_path)
 
 
+class ZipRequest(BaseModel):
+    filenames: list[str]
+    zip_name: str = "UYTDownloader_Export"
+
+
+@router.post("/zip")
+async def create_zip(req: ZipRequest):
+    """Create a zip (store mode, no compression) of selected files for download."""
+    import zipfile
+    import tempfile
+
+    if not req.filenames:
+        raise HTTPException(status_code=400, detail="No files specified")
+
+    output_dir = Path(settings.output_dir)
+    safe_name = "".join(c if c.isalnum() or c in " ._-" else "_" for c in req.zip_name)
+    zip_path = output_dir / f"{safe_name}.zip"
+
+    # Handle collision
+    counter = 1
+    base = str(zip_path)
+    while zip_path.exists():
+        stem, suffix = os.path.splitext(base)
+        zip_path = Path(f"{stem}_{counter}{suffix}")
+        counter += 1
+
+    try:
+        with zipfile.ZipFile(str(zip_path), "w", compression=zipfile.ZIP_STORED) as zf:
+            for fname in req.filenames:
+                if "/" in fname or "\\" in fname or ".." in fname:
+                    continue
+                fpath = output_dir / fname
+                if fpath.exists() and fpath.is_file():
+                    zf.write(str(fpath), fname)
+
+        return {
+            "filename": zip_path.name,
+            "size_bytes": zip_path.stat().st_size,
+            "download_url": f"/api/library/download/{zip_path.name}",
+            "file_count": len(req.filenames),
+        }
+    except Exception as e:
+        # Clean up on failure
+        if zip_path.exists():
+            os.unlink(zip_path)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/zip/{filename}", status_code=204)
+async def delete_zip(filename: str):
+    """Delete a zip file after successful download."""
+    if not filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Can only delete zip files via this endpoint")
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    file_path = Path(settings.output_dir) / filename
+    if file_path.exists():
+        os.unlink(file_path)
+
+
 class MergeRequest(BaseModel):
     filenames: list[str]
     title: str = "Merged"

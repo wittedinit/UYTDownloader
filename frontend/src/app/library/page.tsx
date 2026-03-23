@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { listLibraryFiles, deleteLibraryFile, mergeLibraryFiles, type LibraryFile } from "@/lib/api";
+import { listLibraryFiles, deleteLibraryFile, mergeLibraryFiles, createZip, deleteZip, type LibraryFile } from "@/lib/api";
 
 function resolveApiBase(): string {
   if (typeof window !== "undefined") {
@@ -16,6 +16,8 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [merging, setMerging] = useState(false);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [zipping, setZipping] = useState(false);
   const apiBase = resolveApiBase();
 
   const fetchFiles = useCallback(async () => {
@@ -60,7 +62,7 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-6 lg:p-8 max-w-screen-xl mx-auto w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1">Library</h1>
         <p className="text-sm text-[var(--muted)]">Browse and download completed files</p>
@@ -84,7 +86,7 @@ export default function LibraryPage() {
               <span className="text-sm text-[var(--muted)]">{files.length} files &middot; {formatBytes(files.reduce((s, f) => s + f.size_bytes, 0))}</span>
               {selected.size > 0 && (
                 <div className="flex gap-2">
-                  <button onClick={handleDownloadSelected}
+                  <button onClick={() => setShowDownloadDialog(true)}
                     className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-green-700 transition-all">
                     Download {selected.size}
                   </button>
@@ -166,6 +168,74 @@ export default function LibraryPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Download Dialog */}
+      {showDownloadDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowDownloadDialog(false)}>
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold mb-2">Download {selected.size} File{selected.size !== 1 ? "s" : ""}</h2>
+            <p className="text-sm text-[var(--muted)] mb-6">
+              Total: {formatBytes(files.filter((f) => selected.has(f.filename)).reduce((s, f) => s + f.size_bytes, 0))}
+            </p>
+
+            <div className="space-y-3">
+              {/* Individual downloads */}
+              <button
+                onClick={() => {
+                  handleDownloadSelected();
+                  setShowDownloadDialog(false);
+                }}
+                className="w-full p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl text-left hover:border-indigo-500/50 transition-colors group"
+              >
+                <p className="text-sm font-semibold group-hover:text-indigo-400 transition-colors">Download All Individually</p>
+                <p className="text-xs text-[var(--muted)] mt-1">Download each file separately to your browser&apos;s download folder</p>
+              </button>
+
+              {/* Zip download */}
+              <button
+                disabled={zipping}
+                onClick={async () => {
+                  setZipping(true);
+                  try {
+                    const res = await createZip({
+                      filenames: Array.from(selected),
+                      zip_name: `UYTDownloader_${selected.size}_files`,
+                    });
+                    // Trigger download
+                    const link = document.createElement("a");
+                    link.href = `${apiBase}${res.download_url}`;
+                    link.download = res.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    // Delete zip after a delay (give browser time to start download)
+                    setTimeout(async () => {
+                      try { await deleteZip(res.filename); fetchFiles(); } catch {}
+                    }, 5000);
+                    setShowDownloadDialog(false);
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : "Failed to create zip");
+                  } finally { setZipping(false); }
+                }}
+                className="w-full p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl text-left hover:border-emerald-500/50 transition-colors group disabled:opacity-50"
+              >
+                <p className="text-sm font-semibold group-hover:text-emerald-400 transition-colors">
+                  {zipping ? "Creating zip..." : "Zip All & Download"}
+                </p>
+                <p className="text-xs text-[var(--muted)] mt-1">Bundle into a single ZIP file (stored, not compressed) and download. Zip is auto-deleted after download.</p>
+              </button>
+
+              {/* Cancel */}
+              <button
+                onClick={() => setShowDownloadDialog(false)}
+                className="w-full p-3 text-center text-sm text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -310,6 +310,17 @@ export async function deleteLibraryFile(filename: string) {
   return apiFetch<void>(`/api/library/${encodeURIComponent(filename)}`, { method: "DELETE" });
 }
 
+export async function createZip(params: { filenames: string[]; zip_name?: string }) {
+  return apiFetch<{ filename: string; size_bytes: number; download_url: string; file_count: number }>(
+    "/api/library/zip",
+    { method: "POST", body: JSON.stringify(params) }
+  );
+}
+
+export async function deleteZip(filename: string) {
+  return apiFetch<void>(`/api/library/zip/${encodeURIComponent(filename)}`, { method: "DELETE" });
+}
+
 export async function mergeLibraryFiles(params: {
   filenames: string[];
   title?: string;
