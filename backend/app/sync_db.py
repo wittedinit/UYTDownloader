@@ -5,8 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
-_sync_url = settings.database_url.replace("+asyncpg", "+psycopg2")
-sync_engine = create_engine(_sync_url, pool_pre_ping=True, pool_size=5, max_overflow=10)
+sync_engine = create_engine(settings.database_url_sync, pool_pre_ping=True, pool_size=5, max_overflow=10)
 sync_session_factory = sessionmaker(sync_engine, expire_on_commit=False)
 
 

@@ -39,6 +39,7 @@ class StageType(str, enum.Enum):
     SPONSORBLOCK = "sponsorblock"
     EMBED_SUBTITLES = "embed_subtitles"
     NORMALIZE_AUDIO = "normalize_audio"
+    REENCODE = "reencode"
     FINALIZE = "finalize"
 
 
@@ -56,6 +57,7 @@ class ArtifactKind(str, enum.Enum):
     CLEANED = "cleaned"
     SUBTITLED = "subtitled"
     NORMALIZED = "normalized"
+    REENCODED = "reencoded"
 
 
 class SponsorBlockAction(str, enum.Enum):

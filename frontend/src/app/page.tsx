@@ -17,22 +17,25 @@ function loadSession(): Record<string, unknown> | null {
 }
 
 export default function Home() {
-  const saved = typeof window !== "undefined" ? loadSession() : null;
+  // Lazy initializer to avoid SSR hydration mismatch
+  const [saved] = useState<Record<string, unknown> | null>(() =>
+    typeof window !== "undefined" ? loadSession() : null
+  );
 
-  const [url, setUrl] = useState((saved?.url as string) || "");
-  const [phase, setPhase] = useState<Phase>((saved?.phase as Phase) || "input");
-  const [error, setError] = useState((saved?.error as string) || "");
-  const [source, setSource] = useState<Source | null>((saved?.source as Source) || null);
-  const [entries, setEntries] = useState<Entry[]>((saved?.entries as Entry[]) || []);
-  const [selected, setSelected] = useState<Set<string>>(new Set((saved?.selected as string[]) || []));
+  const [url, setUrl] = useState(() => (saved?.url as string) ?? "");
+  const [phase, setPhase] = useState<Phase>(() => (saved?.phase as Phase) ?? "input");
+  const [error, setError] = useState(() => (saved?.error as string) ?? "");
+  const [source, setSource] = useState<Source | null>(() => (saved?.source as Source) ?? null);
+  const [entries, setEntries] = useState<Entry[]>(() => (saved?.entries as Entry[]) ?? []);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set((saved?.selected as string[]) ?? []));
 
-  const [formatMode, setFormatMode] = useState((saved?.formatMode as string) || "video_audio");
-  const [quality, setQuality] = useState((saved?.quality as string) || "best");
-  const [sponsorblock, setSponsorblock] = useState((saved?.sponsorblock as string) || "keep");
-  const [embedSubs, setEmbedSubs] = useState((saved?.embedSubs as boolean) || false);
-  const [normalizeAudio, setNormalizeAudio] = useState((saved?.normalizeAudio as boolean) || false);
-  const [outputFormat, setOutputFormat] = useState((saved?.outputFormat as string) || "original");
-  const [videoBitrate, setVideoBitrate] = useState((saved?.videoBitrate as string) || "auto");
+  const [formatMode, setFormatMode] = useState(() => (saved?.formatMode as string) ?? "video_audio");
+  const [quality, setQuality] = useState(() => (saved?.quality as string) ?? "best");
+  const [sponsorblock, setSponsorblock] = useState(() => (saved?.sponsorblock as string) ?? "keep");
+  const [embedSubs, setEmbedSubs] = useState(() => (saved?.embedSubs as boolean) ?? false);
+  const [normalizeAudio, setNormalizeAudio] = useState(() => (saved?.normalizeAudio as boolean) ?? false);
+  const [outputFormat, setOutputFormat] = useState(() => (saved?.outputFormat as string) ?? "original");
+  const [videoBitrate, setVideoBitrate] = useState(() => (saved?.videoBitrate as string) ?? "auto");
 
   // Persist state to sessionStorage on changes
   useEffect(() => {
@@ -88,6 +91,8 @@ export default function Home() {
         sponsorblock_action: sponsorblock,
         embed_subtitles: embedSubs,
         normalize_audio: normalizeAudio,
+        output_format: outputFormat !== "original" ? outputFormat : undefined,
+        video_bitrate: videoBitrate !== "auto" ? videoBitrate : undefined,
       });
       setPhase("queued");
     } catch (e) {

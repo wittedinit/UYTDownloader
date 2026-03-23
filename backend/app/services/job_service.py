@@ -91,6 +91,7 @@ def _build_stages(
     sponsorblock: str,
     embed_subs: bool = False,
     normalize: bool = False,
+    output_format: str | None = None,
 ) -> list[dict]:
     """Return ordered list of stage definitions for a download job."""
     stages = [
@@ -118,6 +119,10 @@ def _build_stages(
         next_order = max(s["order"] for s in stages) + 1
         stages.append({"type": StageType.NORMALIZE_AUDIO, "order": next_order})
 
+    if output_format:
+        next_order = max(s["order"] for s in stages) + 1
+        stages.append({"type": StageType.REENCODE, "order": next_order})
+
     final_order = max(s["order"] for s in stages) + 1
     stages.append({"type": StageType.FINALIZE, "order": final_order})
 
@@ -132,6 +137,8 @@ def create_jobs(
     output_dir: str | None = None,
     embed_subtitles: bool = False,
     normalize_audio: bool = False,
+    output_format: str | None = None,
+    video_bitrate: str | None = None,
 ) -> list[dict]:
     """
     Create download jobs for the given entries.
@@ -148,7 +155,7 @@ def create_jobs(
         if output_dir:
             resolved = Path(output_dir).resolve()
             allowed = Path(settings.output_dir).resolve()
-            if str(resolved).startswith(str(allowed)):
+            if resolved.is_relative_to(allowed):
                 out_dir = str(resolved)
             else:
                 logger.warning("Rejected output_dir %s — not within %s", output_dir, allowed)
@@ -193,12 +200,14 @@ def create_jobs(
                 sponsorblock_action=SponsorBlockAction(sponsorblock_action),
                 output_dir=out_dir,
                 cookie_file=str(cookie_path) if cookie_path else None,
+                output_format=output_format,
+                video_bitrate=video_bitrate,
                 output_signature_hash=sig,
             )
             session.add(req)
 
             # Create stages
-            stage_defs = _build_stages(format_mode, sponsorblock_action, embed_subtitles, normalize_audio)
+            stage_defs = _build_stages(format_mode, sponsorblock_action, embed_subtitles, normalize_audio, output_format)
             for sd in stage_defs:
                 stage = JobStage(job_id=job.id, type=sd["type"], order=sd["order"])
                 session.add(stage)
@@ -257,6 +266,7 @@ def execute_stage(job_id: str, stage_id: str, task=None) -> dict:
             StageType.SPONSORBLOCK: _handle_sponsorblock,
             StageType.EMBED_SUBTITLES: _handle_embed_subtitles,
             StageType.NORMALIZE_AUDIO: _handle_normalize_audio,
+            StageType.REENCODE: _handle_reencode,
             StageType.FINALIZE: _handle_finalize,
         }
         handler = handlers.get(stage.type)
@@ -633,13 +643,110 @@ def _handle_normalize_audio(session: Session, job: Job, stage: JobStage, task) -
 
 def _find_latest_artifact(session: Session, job: Job) -> Artifact | None:
     """Find the most processed artifact for a job."""
-    for kind in [ArtifactKind.NORMALIZED, ArtifactKind.SUBTITLED, ArtifactKind.CLEANED, ArtifactKind.MERGED, ArtifactKind.AUDIO_STREAM, ArtifactKind.VIDEO_STREAM]:
+    for kind in [ArtifactKind.REENCODED, ArtifactKind.NORMALIZED, ArtifactKind.SUBTITLED, ArtifactKind.CLEANED, ArtifactKind.MERGED, ArtifactKind.AUDIO_STREAM, ArtifactKind.VIDEO_STREAM]:
         artifact = session.execute(
             select(Artifact).where(Artifact.job_id == job.id, Artifact.kind == kind)
         ).scalar_one_or_none()
         if artifact:
             return artifact
     return None
+
+
+def _handle_reencode(session: Session, job: Job, stage: JobStage, task) -> dict:
+    """Re-encode the latest artifact to a different format/bitrate."""
+    import subprocess
+
+    entry = job.entry
+    req = job.request
+    if not entry or not req:
+        raise ValueError("Job missing entry or request")
+
+    source_artifact = _find_latest_artifact(session, job)
+    if not source_artifact:
+        raise ValueError("No source artifact for re-encoding")
+
+    output_format = req.output_format
+    video_bitrate = req.video_bitrate
+    if not output_format:
+        return {"reencoded": False, "reason": "no output format specified"}
+
+    # Map format names to ffmpeg parameters
+    FORMAT_MAP = {
+        "mp4_h264": {"ext": "mp4", "vcodec": "libx264", "acodec": "aac"},
+        "mp4_h265": {"ext": "mp4", "vcodec": "libx265", "acodec": "aac"},
+        "mkv_h264": {"ext": "mkv", "vcodec": "libx264", "acodec": "aac"},
+        "webm_vp9": {"ext": "webm", "vcodec": "libvpx-vp9", "acodec": "libopus"},
+        "mp3": {"ext": "mp3", "vcodec": None, "acodec": "libmp3lame"},
+        "m4a_aac": {"ext": "m4a", "vcodec": None, "acodec": "aac"},
+        "opus": {"ext": "opus", "vcodec": None, "acodec": "libopus"},
+        "flac": {"ext": "flac", "vcodec": None, "acodec": "flac"},
+    }
+
+    fmt = FORMAT_MAP.get(output_format)
+    if not fmt:
+        return {"reencoded": False, "reason": f"unknown format: {output_format}"}
+
+    work_dir = _job_work_dir(job)
+    safe_title = "".join(c if c.isalnum() or c in " ._-" else "_" for c in (entry.title or entry.external_video_id))
+    output_path = str(work_dir / f"{safe_title}.reencoded.{fmt['ext']}")
+
+    # Build ffmpeg command
+    from app.services.gpu_service import detect_gpu
+    gpu = detect_gpu()
+
+    cmd = ["ffmpeg", "-y", "-i", source_artifact.path]
+
+    if fmt["vcodec"]:
+        # Check if GPU encoder is available for this codec
+        encoder = fmt["vcodec"]
+        if encoder == "libx264" and gpu["gpu_available"]:
+            encoder = gpu["video_encoder_transcode"]
+        cmd.extend(["-c:v", encoder])
+        if video_bitrate:
+            cmd.extend(["-b:v", video_bitrate])
+        elif encoder in ("libx264", "libx265"):
+            cmd.extend(["-crf", "23", "-preset", "medium"])
+        elif encoder == "h264_nvenc":
+            cmd.extend(["-preset", "p4", "-rc", "vbr", "-cq", "23"])
+        elif encoder == "h264_videotoolbox":
+            cmd.extend(["-q:v", "65"])
+    else:
+        cmd.extend(["-vn"])  # No video for audio-only formats
+
+    cmd.extend(["-c:a", fmt["acodec"]])
+    if fmt["acodec"] in ("aac", "libmp3lame", "libopus") and not fmt["vcodec"]:
+        cmd.extend(["-b:a", "192k"])  # Default audio bitrate for audio-only
+
+    if fmt["ext"] in ("mp4", "m4a"):
+        cmd.extend(["-movflags", "+faststart"])
+
+    cmd.append(output_path)
+
+    logger.info("Re-encoding to %s: %s", output_format, " ".join(cmd))
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Re-encode failed: {result.stderr[-500:]}")
+
+    artifact = Artifact(
+        job_id=job.id,
+        kind=ArtifactKind.REENCODED,
+        path=output_path,
+        filename=os.path.basename(output_path),
+        size_bytes=os.path.getsize(output_path) if os.path.exists(output_path) else None,
+        produced_by_stage_id=stage.id,
+        parent_artifact_id=source_artifact.id,
+    )
+    session.add(artifact)
+    session.flush()
+
+    return {
+        "reencoded": True,
+        "output_path": output_path,
+        "format": output_format,
+        "bitrate": video_bitrate,
+        "artifact_id": str(artifact.id),
+    }
 
 
 def _handle_finalize(session: Session, job: Job, stage: JobStage, task) -> dict:

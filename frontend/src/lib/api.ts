@@ -1,4 +1,4 @@
-function resolveApiBase(): string {
+export function resolveApiBase(): string {
   if (typeof window !== "undefined") {
     // OrbStack local dev: route to backend container via .orb.local DNS
     if (window.location.hostname.endsWith(".orb.local")) {
@@ -169,6 +169,8 @@ export async function createJobs(params: {
   sponsorblock_action?: string;
   embed_subtitles?: boolean;
   normalize_audio?: boolean;
+  output_format?: string;
+  video_bitrate?: string;
 }) {
   return apiFetch<{ jobs: Job[] }>("/api/jobs", {
     method: "POST",

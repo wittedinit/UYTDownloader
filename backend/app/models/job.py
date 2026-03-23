@@ -63,6 +63,8 @@ class JobRequest(Base):
     )
     output_dir: Mapped[str | None] = mapped_column(String(1024))
     cookie_file: Mapped[str | None] = mapped_column(String(1024))
+    output_format: Mapped[str | None] = mapped_column(String(32))  # mp4_h264, mp3, etc.
+    video_bitrate: Mapped[str | None] = mapped_column(String(16))  # 5000k, etc.
     output_signature_hash: Mapped[str] = mapped_column(String(64), index=True)
 
     job: Mapped["Job"] = relationship(back_populates="request")
