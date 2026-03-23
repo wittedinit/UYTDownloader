@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>UYTDownloader</Name>
+  <Repository>ghcr.io/wittedinit/uytdownloader</Repository>
+  <Registry>https://github.com/wittedinit/UYTDownloader</Registry>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Latest stable release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/wittedinit/UYTDownloader/issues</Support>
+  <Project>https://github.com/wittedinit/UYTDownloader</Project>
+  <Overview>
+    Self-hosted YouTube download orchestration tool built around yt-dlp, ffmpeg, and SponsorBlock.
+
+    Features:
+    - Probe videos, playlists, and channels before downloading
+    - Video + Audio, Audio Only, or Video Only with quality/format/bitrate selection
+    - SponsorBlock integration (keep, mark chapters, or remove)
+    - Channel/playlist subscriptions with auto-download and filters
+    - Merge multiple videos into compilations with chapter markers
+    - Library with bulk download, zip export, and file management
+    - Storage management with retention policies and disk space guard
+    - GPU acceleration (NVIDIA NVENC auto-detected)
+    - Real-time download progress tracking
+
+    NOTE: This is a Docker Compose application with 6 services (postgres, redis, backend, worker, beat, frontend).
+    Use the Docker Compose Manager plugin to deploy, or deploy each service individually.
+  </Overview>
+  <Category>MediaApp:Video MediaApp:Music Downloaders</Category>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/wittedinit/UYTDownloader/main/frontend/public/icon.png</Icon>
+  <ExtraParams/>
+  <DateInstalled/>
+  <Description>
+    YouTube download orchestration with web UI. Probe before download, SponsorBlock removal,
+    playlist subscriptions, compilation builder, GPU acceleration, and library management.
+  </Description>
+
+  <!-- Ports -->
+  <Config Name="WebUI Port" Target="3000" Default="3000" Mode="tcp" Description="Frontend web interface" Type="Port" Display="always" Required="true">3000</Config>
+  <Config Name="API Port" Target="8000" Default="8000" Mode="tcp" Description="Backend API (used by frontend)" Type="Port" Display="always" Required="true">8000</Config>
+
+  <!-- Volumes -->
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/uytdownloader/config" Mode="rw" Description="Configuration, cookies, logs" Type="Path" Display="always" Required="true">/mnt/user/appdata/uytdownloader/config</Config>
+  <Config Name="Downloads" Target="/downloads" Default="/mnt/user/data/media/youtube" Mode="rw" Description="Completed downloads" Type="Path" Display="always" Required="true">/mnt/user/data/media/youtube</Config>
+  <Config Name="Work" Target="/work" Default="/mnt/user/appdata/uytdownloader/work" Mode="rw" Description="Temporary/in-progress downloads" Type="Path" Display="always" Required="true">/mnt/user/appdata/uytdownloader/work</Config>
+
+  <!-- Environment Variables -->
+  <Config Name="PUID" Target="PUID" Default="99" Description="User ID for file permissions (99 = nobody on Unraid)" Type="Variable" Display="always" Required="true">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Description="Group ID for file permissions (100 = users on Unraid)" Type="Variable" Display="always" Required="true">100</Config>
+  <Config Name="TZ" Target="TZ" Default="America/New_York" Description="Your timezone" Type="Variable" Display="always" Required="true">America/New_York</Config>
+  <Config Name="Concurrency Mode" Target="UYT_CONCURRENCY_MODE" Default="balanced" Description="Download concurrency: safe (1 job), balanced (3 jobs), power (6 jobs)" Type="Variable" Display="always" Required="false">balanced</Config>
+  <Config Name="SponsorBlock Default" Target="UYT_SPONSORBLOCK_DEFAULT" Default="keep" Description="Default SponsorBlock action: keep, mark_chapters, remove" Type="Variable" Display="always" Required="false">keep</Config>
+  <Config Name="File Retention" Target="UYT_RETENTION" Default="forever" Description="Auto-delete files older than: 1_day, 1_week, 1_month, 3_months, 6_months, 1_year, forever" Type="Variable" Display="always" Required="false">forever</Config>
+  <Config Name="Disk Guard %" Target="UYT_DISK_GUARD_PCT" Default="10" Description="Auto-cleanup when free disk space drops below this percentage" Type="Variable" Display="advanced" Required="false">10</Config>
+  <Config Name="Disk Guard Strategy" Target="UYT_DISK_GUARD_STRATEGY" Default="oldest_first" Description="Cleanup order: oldest_first, newest_first, largest_first, smallest_first" Type="Variable" Display="advanced" Required="false">oldest_first</Config>
+  <Config Name="NVIDIA GPU" Target="NVIDIA_VISIBLE_DEVICES" Default="void" Description="Set to 'all' to enable NVIDIA GPU acceleration (requires nvidia-driver plugin)" Type="Variable" Display="advanced" Required="false">void</Config>
+</Container>

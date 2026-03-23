@@ -91,7 +91,7 @@ export default function SettingsPage() {
       {/* Retention Policy */}
       <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-6 mb-6">
         <h2 className="text-xs font-medium text-[var(--muted)] mb-1 uppercase tracking-wider">Retention Policy</h2>
-        <p className="text-xs text-[var(--muted)] mb-4">Auto-delete files older than the selected period</p>
+        <p className="text-xs text-[var(--muted)] mb-4">Runs automatically every hour. Deletes files older than the selected period.</p>
         <div className="flex items-end gap-4">
           <div className="flex-1">
             <label className="block text-xs text-[var(--muted)] mb-1.5">Delete files older than</label>
@@ -104,19 +104,25 @@ export default function SettingsPage() {
           </div>
           <button onClick={() => handleRetention(true)}
             className="px-4 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm font-medium hover:border-[var(--muted)] transition-colors">
-            Preview
+            Preview What Would Be Deleted
           </button>
-          <button onClick={() => handleRetention(false)} disabled={retention === "forever"}
+          <button onClick={() => { if (confirm(`This will permanently delete all files older than "${retention.replace(/_/g, " ")}". Continue?`)) handleRetention(false); }} disabled={retention === "forever"}
             className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-40 transition-colors">
-            Clean Now
+            Run Cleanup Now
           </button>
         </div>
+        {retention === "forever" && (
+          <p className="text-xs text-emerald-400 mt-3">Retention is set to forever — files are never auto-deleted.</p>
+        )}
       </div>
 
       {/* Disk Space Guard */}
       <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-6 mb-6">
         <h2 className="text-xs font-medium text-[var(--muted)] mb-1 uppercase tracking-wider">Disk Space Guard</h2>
-        <p className="text-xs text-[var(--muted)] mb-4">Auto-delete files when free space drops below threshold</p>
+        <p className="text-xs text-[var(--muted)] mb-4">
+          Checked automatically every hour. If free disk space is below the threshold, files are deleted using the chosen strategy until space is recovered.
+          {usage && <span className="text-[var(--foreground)]"> Currently {usage.disk_free_pct}% free.</span>}
+        </p>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-xs text-[var(--muted)] mb-1.5">Minimum free space (%)</label>
@@ -142,13 +148,19 @@ export default function SettingsPage() {
         <div className="flex gap-3">
           <button onClick={() => handleDiskGuard(true)}
             className="px-4 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm font-medium hover:border-[var(--muted)] transition-colors">
-            Preview
+            Preview What Would Be Deleted
           </button>
-          <button onClick={() => handleDiskGuard(false)}
+          <button onClick={() => { if (confirm(`If free space is below ${diskGuardPct}%, this will delete files (${diskGuardStrategy.replace(/_/g, " ")}) until space is recovered. Continue?`)) handleDiskGuard(false); }}
             className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-            Clean Now
+            Run Guard Now
           </button>
         </div>
+        {usage && usage.disk_free_pct >= diskGuardPct && (
+          <p className="text-xs text-emerald-400 mt-3">Disk has {usage.disk_free_pct}% free — above the {diskGuardPct}% threshold. No cleanup needed.</p>
+        )}
+        {usage && usage.disk_free_pct < diskGuardPct && (
+          <p className="text-xs text-amber-400 mt-3">Disk has {usage.disk_free_pct}% free — below the {diskGuardPct}% threshold. Files will be deleted on next automatic check.</p>
+        )}
       </div>
 
       {/* Result message */}

@@ -1,276 +1,46 @@
 # UYTDownloader
 
-Self-hosted YouTube download orchestration tool. Not another downloader — an orchestration product built around proven tools (yt-dlp, ffmpeg, SponsorBlock).
+Self-hosted YouTube download orchestration tool. Built around yt-dlp, ffmpeg, and SponsorBlock — not another downloader, but a complete management platform for offline YouTube consumption.
 
-## What It Does
+## Features
 
-- **Probe before download** — paste a video, playlist, or channel URL and see all available entries with metadata before downloading anything
-- **Select and queue** — choose which entries to download with quality/format/SponsorBlock preferences
-- **Multi-stage pipeline** — each download goes through: format revalidation → download → merge → SponsorBlock → subtitle embedding → audio normalization → finalize
-- **SponsorBlock integration** — keep, mark as chapters, or remove sponsor segments automatically
-- **Subscriptions** — subscribe to channels/playlists with filters, auto-download new content
-- **Compilation builder** — merge multiple downloaded videos into one file with chapters
-- **Library** — browse, select, and download completed files from the web UI
-- **Archive/dedup** — tracks what you've downloaded to prevent duplicates
-- **Storage management** — retention policies and automatic disk space cleanup
-- **Job management** — queue, cancel, retry, monitor real-time progress with stage-level diagnostics
-- **GPU acceleration** — NVIDIA NVENC, Apple Metal (VideoToolbox), VA-API, or CPU fallback — detected automatically at runtime
+### Download
+- **Probe before download** — paste any video, playlist, or channel URL. See titles, thumbnails, channel, duration, and upload dates before committing
+- **Video + Audio, Audio Only, or Video Only** output modes
+- **Quality selection** — Best Available, 2160p (4K), 1080p, 720p, 480p for video; 320/256/192/128/64 kbps for audio
+- **Output format conversion** — MP4/H.264, MP4/H.265, MKV, WebM/VP9 for video; MP3, M4A/AAC, Opus, FLAC for audio
+- **Video bitrate control** — Auto, 8000/5000/3000/1500/800 kbps with quality/size recommendations
+- **SponsorBlock** — keep all, mark as chapters, or remove sponsor segments automatically
+- **Subtitle embedding** and **audio normalization** (EBU R128 two-pass) as optional post-processing stages
+- **Real-time progress** — live percentage and speed displayed during downloads
+- **Archive/dedup** — tracks downloads to prevent re-downloading the same content
 
-## Architecture
-
-```
-Frontend (Next.js) → Backend API (FastAPI) → Queue (Celery + Redis)
-                                                    ↓
-                                              Worker (yt-dlp + ffmpeg)
-                                                    ↓
-                                         Postgres (metadata + jobs + subscriptions)
-```
-
-### Domain Model
-
-```
-Source → Entry → FormatSnapshot
-Source → Subscription → SubscriptionFilter
-Entry → Job → JobRequest (immutable config)
-         ↓
-    JobStage → Artifact → ArchiveRecord
-```
-
-### Job Stages
-
-| Stage | What it does |
-|-------|-------------|
-| `revalidate_formats` | Re-extract format info from YouTube |
-| `download_video` | Download video stream |
-| `download_audio` | Download audio stream |
-| `merge` | Merge video + audio via ffmpeg (stream copy) |
-| `sponsorblock` | Mark or remove sponsor segments |
-| `embed_subtitles` | Download and embed subtitle tracks (optional) |
-| `normalize_audio` | EBU R128 loudness normalization (optional, two-pass) |
-| `finalize` | Move to output dir, checksum, create archive record |
-
-Stages are added dynamically based on job options. A simple audio-only download uses: revalidate → download_audio → finalize. A full video+audio with SponsorBlock removal and normalization uses all 8 stages.
-
-## Quick Start
-
-### Prerequisites
-
-- Docker + Docker Compose
-- (Optional) NVIDIA GPU with nvidia-docker for NVENC acceleration
-- (Optional) Apple Silicon / Intel Mac for Metal (VideoToolbox) acceleration
-
-### Run
-
-```bash
-git clone <repo-url> uytdownloader
-cd uytdownloader
-cp .env.example .env
-docker compose up -d
-```
-
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- Health check: http://localhost:8000/health
-
-> **OrbStack users**: If `localhost:3000` doesn't work, use the container DNS:
-> `http://uyt-frontend-1.orb.local:3000` and `http://uyt-backend-1.orb.local:8000`
-
-### With GPU (NVIDIA)
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
-```
-
-### Configuration
-
-Environment variables (set in `.env` or docker-compose):
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `UYT_PORT` | `8000` | Backend API port |
-| `UYT_FRONTEND_PORT` | `3000` | Frontend port |
-| `UYT_CONCURRENCY_MODE` | `balanced` | `safe` (1 job), `balanced` (3), `power` (6) |
-| `UYT_SPONSORBLOCK_DEFAULT` | `keep` | `keep`, `mark_chapters`, `remove` |
-| `UYT_RETENTION` | `forever` | Auto-delete: `1_day`, `1_week`, `1_month`, `3_months`, `6_months`, `1_year`, `forever` |
-| `UYT_DISK_GUARD_PCT` | `10` | Auto-cleanup when free disk space drops below this % |
-| `UYT_DISK_GUARD_STRATEGY` | `oldest_first` | Cleanup order: `oldest_first`, `newest_first`, `largest_first`, `smallest_first` |
-| `PUID` / `PGID` | `1000` | File ownership UID/GID |
-| `TZ` | `UTC` | Timezone |
-
-### Browser Cookies
-
-For age-gated or member-only content, export cookies in Netscape format:
-
-```bash
-# Place your cookies file at:
-config/cookies/youtube.txt
-```
-
-## API
-
-### Probe
-
-```bash
-# Submit URL for metadata extraction
-curl -X POST http://localhost:8000/api/probe \
-  -H 'Content-Type: application/json' \
-  -d '{"url": "https://www.youtube.com/watch?v=VIDEO_ID"}'
-
-# Poll result
-curl http://localhost:8000/api/probe/{probe_id}
-```
-
-### Jobs
-
-```bash
-# Create download jobs
-curl -X POST http://localhost:8000/api/jobs \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "entry_ids": ["uuid-here"],
-    "format_mode": "video_audio",
-    "quality": "1080p",
-    "sponsorblock_action": "remove",
-    "embed_subtitles": false,
-    "normalize_audio": false
-  }'
-
-# List jobs (with optional status filter)
-curl http://localhost:8000/api/jobs
-curl http://localhost:8000/api/jobs?status=completed
-
-# Get job details (stages, artifacts, download URLs)
-curl http://localhost:8000/api/jobs/{job_id}
-
-# Cancel / Retry
-curl -X POST http://localhost:8000/api/jobs/{job_id}/cancel
-curl -X POST http://localhost:8000/api/jobs/{job_id}/retry
-```
-
-### Sources & Entries
-
-```bash
-curl http://localhost:8000/api/sources
-curl http://localhost:8000/api/sources/{source_id}
-curl http://localhost:8000/api/sources/{source_id}/entries
-curl http://localhost:8000/api/entries/{entry_id}
-```
-
-### Subscriptions
-
-```bash
-# Create subscription for a channel/playlist
-curl -X POST http://localhost:8000/api/subscriptions \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "source_id": "uuid-here",
-    "check_interval_minutes": 60,
-    "auto_download": true,
-    "format_mode": "audio_only",
-    "sponsorblock_action": "remove",
-    "filters": [
-      {"filter_type": "ignore_shorts"},
-      {"filter_type": "min_duration", "value": "120"}
-    ]
-  }'
-
-# List / Get / Update / Delete
-curl http://localhost:8000/api/subscriptions
-curl http://localhost:8000/api/subscriptions/{sub_id}
-curl -X PATCH http://localhost:8000/api/subscriptions/{sub_id} \
-  -H 'Content-Type: application/json' -d '{"enabled": false}'
-curl -X DELETE http://localhost:8000/api/subscriptions/{sub_id}
-
-# Manually trigger a check
-curl -X POST http://localhost:8000/api/subscriptions/{sub_id}/check
-```
-
-### Compilations
-
-```bash
-# Merge multiple downloaded entries into one file
-curl -X POST http://localhost:8000/api/compilations \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "items": [
-      {"entry_id": "uuid-1", "position": 0},
-      {"entry_id": "uuid-2", "position": 1}
-    ],
-    "mode": "video_chapters",
-    "title": "My Compilation",
-    "normalize_audio": false
-  }'
-```
-
-Compilation modes: `video_chapters`, `video_no_chapters`, `audio_chapters`, `audio_no_chapters`
+### Merge & Compile
+- **Download & Merge** — download multiple playlist/channel entries and merge into one file with chapter markers
+- **Library Merge** — select files in the Library and merge them post-download
+- **Drag-and-drop reordering** — set merge order by dragging entries in the list
+- **4 compilation modes** — video with chapters, video without, audio with chapters, audio without
 
 ### Library
+- **Browse all downloads** — file list with type icons, sizes, dates
+- **Select & Download** — individual or bulk download via browser; option to zip all selected (store mode) into a single download
+- **Select & Delete** — bulk file cleanup
+- **Select & Merge** — combine downloaded files into compilations
 
-```bash
-# List all downloaded files
-curl http://localhost:8000/api/library
-
-# Download a specific file
-curl -O http://localhost:8000/api/library/download/{filename}
-
-# Delete a file
-curl -X DELETE http://localhost:8000/api/library/{filename}
-```
+### Subscriptions
+- **Subscribe to channels/playlists** — auto-check for new content on a configurable interval
+- **Filters** — ignore shorts (<60s), ignore live, min/max duration, keyword include/exclude
+- **Auto-download** — new entries matching filters are queued automatically
+- **Celery Beat scheduler** — checks all due subscriptions every 5 minutes
 
 ### Storage Management
+- **Disk usage dashboard** — total/used/free space, download count and size
+- **Retention policy** — auto-delete files older than: 1 day, 1 week, 1 month, 3 months, 6 months, 1 year, or never
+- **Disk space guard** — auto-cleanup when free space drops below threshold; strategies: oldest first, newest first, largest first, smallest first
+- **Hourly automated cleanup** via Celery Beat
 
-```bash
-# Get disk usage stats
-curl http://localhost:8000/api/storage/usage
-
-# Get available presets
-curl http://localhost:8000/api/storage/presets
-
-# Preview retention cleanup (dry run)
-curl -X POST "http://localhost:8000/api/storage/retention?retention=1_week&dry_run=true"
-
-# Run retention cleanup
-curl -X POST "http://localhost:8000/api/storage/retention?retention=1_week"
-
-# Preview disk guard cleanup
-curl -X POST "http://localhost:8000/api/storage/disk-guard?min_free_pct=10&strategy=oldest_first&dry_run=true"
-
-# Run disk guard cleanup
-curl -X POST "http://localhost:8000/api/storage/disk-guard?min_free_pct=10&strategy=largest_first"
-```
-
-## Format Modes
-
-| Mode | Output |
-|------|--------|
-| `video_audio` | Merged MP4 (video + audio) |
-| `audio_only` | Audio file (M4A) |
-| `video_only` | Video-only file |
-
-## Quality Presets
-
-| Preset | yt-dlp format spec |
-|--------|--------------------|
-| `best` | `bestvideo+bestaudio/best` |
-| `2160p` | `bestvideo[height<=2160]+bestaudio/best[height<=2160]` |
-| `1080p` | `bestvideo[height<=1080]+bestaudio/best[height<=1080]` |
-| `720p` | `bestvideo[height<=720]+bestaudio/best[height<=720]` |
-| `480p` | `bestvideo[height<=480]+bestaudio/best[height<=480]` |
-
-## Subscription Filters
-
-| Filter | Description |
-|--------|-------------|
-| `ignore_shorts` | Skip videos shorter than 60 seconds |
-| `ignore_live` | Skip live streams and was-live content |
-| `min_duration` | Minimum duration in seconds (value required) |
-| `max_duration` | Maximum duration in seconds (value required) |
-| `keyword_include` | Only download if title contains keyword |
-| `keyword_exclude` | Skip if title contains keyword |
-
-## GPU Acceleration
-
-Automatically detected at runtime (priority: NVIDIA → Apple → VA-API → CPU):
+### GPU Acceleration
+Automatically detected at runtime — no configuration needed:
 
 | GPU | Encoder | Detection |
 |-----|---------|-----------|
@@ -279,90 +49,282 @@ Automatically detected at runtime (priority: NVIDIA → Apple → VA-API → CPU
 | Intel/AMD | `h264_vaapi` | `/dev/dri/renderD128` exists |
 | None | `libx264` (CPU) | Fallback |
 
-GPU is used for transcoding operations: SponsorBlock segment removal, audio normalization, compilation re-encoding, and subtitle embedding when re-encode is needed. Simple video+audio merges use stream copy (no re-encode, no GPU needed).
+GPU is used only when re-encoding is needed (SponsorBlock removal, audio normalization, format conversion, compilation). Simple merges use stream copy — no GPU required.
 
-## Stack
+---
 
-- **Frontend**: Next.js 16 + TypeScript + Tailwind CSS
-- **Backend**: FastAPI + SQLAlchemy + Alembic
-- **Queue**: Celery + Redis + Celery Beat (scheduler)
-- **Database**: PostgreSQL 16
-- **Engine**: yt-dlp + deno (JS runtime) + ffmpeg
-- **SponsorBlock**: Public API integration (sponsor.ajay.app)
+## Installation
 
-## Docker Services
+### Docker Compose (Recommended)
 
-| Service | Image | Purpose |
-|---------|-------|---------|
+```bash
+git clone https://github.com/wittedinit/UYTDownloader.git
+cd UYTDownloader
+cp .env.example .env    # Edit settings if needed
+docker compose up -d
+```
+
+Open **http://your-server-ip:3000** in your browser.
+
+### Unraid (Community Apps)
+
+UYTDownloader runs as a Docker Compose stack on Unraid. To deploy:
+
+1. **Install Docker Compose Manager** plugin from Community Apps if not already installed
+
+2. **Create the stack** — add a new Compose stack with this repo's `docker-compose.yml`, or use the template below
+
+3. **Configure paths** — map the three volumes to your Unraid appdata/media shares:
+
+   | Container Path | Suggested Unraid Path | Purpose |
+   |---------------|----------------------|---------|
+   | `/config` | `/mnt/user/appdata/uytdownloader/config` | Cookies, logs |
+   | `/downloads` | `/mnt/user/data/media/youtube` | Completed files |
+   | `/work` | `/mnt/user/appdata/uytdownloader/work` | Temp/in-progress |
+
+4. **Configure ports**:
+
+   | Port | Default | Purpose |
+   |------|---------|---------|
+   | WebUI | `3000` | Frontend (access in browser) |
+   | API | `8000` | Backend API |
+
+5. **Set PUID/PGID** — match your Unraid user (typically `PUID=99` `PGID=100` for `nobody:users`)
+
+6. **Set timezone** — e.g., `TZ=Europe/London`
+
+7. **GPU passthrough** (optional) — if you have an NVIDIA GPU passed through to Docker:
+   - Add `--runtime=nvidia` to the worker container
+   - Set `NVIDIA_VISIBLE_DEVICES=all`
+   - Or use the `docker-compose.gpu.yml` override
+
+#### Unraid Environment Variables
+
+| Variable | Default | What to set |
+|----------|---------|-------------|
+| `PUID` | `1000` | `99` (Unraid nobody user) |
+| `PGID` | `1000` | `100` (Unraid users group) |
+| `TZ` | `UTC` | Your timezone, e.g., `Europe/London` |
+| `UYT_CONCURRENCY_MODE` | `balanced` | `safe` (1 job), `balanced` (3), `power` (6) |
+| `UYT_RETENTION` | `forever` | Auto-delete period: `1_week`, `1_month`, `1_year`, `forever` |
+| `UYT_DISK_GUARD_PCT` | `10` | Min free disk % before auto-cleanup starts |
+| `UYT_DISK_GUARD_STRATEGY` | `oldest_first` | `oldest_first`, `newest_first`, `largest_first`, `smallest_first` |
+| `UYT_SPONSORBLOCK_DEFAULT` | `keep` | `keep`, `mark_chapters`, `remove` |
+
+#### Browser Cookies (Optional)
+
+For age-gated or member-only content, export your YouTube cookies in Netscape format and place at:
+```
+/mnt/user/appdata/uytdownloader/config/cookies/youtube.txt
+```
+
+### With NVIDIA GPU
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+---
+
+## Web UI Pages
+
+| Page | URL | Purpose |
+|------|-----|---------|
+| **Download** | `/` | Probe URLs, select entries, configure quality/format, download or merge |
+| **Jobs** | `/jobs` | Monitor progress, cancel, retry, delete job history |
+| **Library** | `/library` | Browse files, download individually or as zip, merge, delete |
+| **Subscriptions** | `/subscriptions` | Manage auto-download subscriptions with filters |
+| **Settings** | `/settings` | Disk usage, retention policy, disk guard, system health |
+
+---
+
+## Architecture
+
+```
+Browser → Frontend (Next.js :3000)
+              ↓
+         Backend API (FastAPI :8000) → PostgreSQL (metadata, jobs, subscriptions)
+              ↓
+         Redis (queue broker)
+              ↓
+         Worker (Celery) → yt-dlp + deno + ffmpeg
+              ↓
+         Beat (Celery Beat) → subscription checks, storage cleanup
+```
+
+### Docker Services
+
+| Service | Base Image | Purpose |
+|---------|-----------|---------|
 | `postgres` | postgres:16-alpine | Database |
 | `redis` | redis:7-alpine | Queue broker + result backend |
-| `backend` | uyt-backend | FastAPI API server |
-| `worker` | uyt-worker | Celery worker (downloads, processing) |
-| `beat` | uyt-beat | Celery Beat (subscription scheduler, storage cleanup) |
-| `frontend` | uyt-frontend | Next.js web UI |
+| `backend` | python:3.12-slim + ffmpeg + deno | FastAPI API server + auto-migration |
+| `worker` | python:3.12-slim + ffmpeg + deno | Celery worker (downloads, processing) |
+| `beat` | (same as worker) | Celery Beat scheduler |
+| `frontend` | node:22-alpine | Next.js web UI (standalone build) |
+
+### Job Pipeline
+
+Each download passes through a configurable multi-stage pipeline:
+
+```
+revalidate_formats → download_video → download_audio → merge
+    → sponsorblock → embed_subtitles → normalize_audio → finalize
+```
+
+Stages are added dynamically. Audio-only skips video/merge. Stages like SponsorBlock, subtitles, and normalization are opt-in.
+
+---
+
+## API Reference
+
+30 endpoints across 7 resource groups. Full OpenAPI docs available at `http://your-server:8000/docs`.
+
+<details>
+<summary>Expand API reference</summary>
+
+### Probe
+```
+POST /api/probe                         Submit URL for metadata extraction
+GET  /api/probe/{probe_id}              Poll probe result
+```
+
+### Jobs
+```
+POST /api/jobs                          Create download jobs
+GET  /api/jobs                          List jobs (filter by status)
+GET  /api/jobs/{job_id}                 Get job details (stages, artifacts)
+POST /api/jobs/{job_id}/cancel          Cancel a job
+POST /api/jobs/{job_id}/retry           Retry a failed job
+DELETE /api/jobs/{job_id}               Delete job from history
+POST /api/jobs/bulk-delete              Delete multiple jobs
+```
+
+### Sources & Entries
+```
+GET  /api/sources                       List probed sources
+GET  /api/sources/{source_id}           Get source details
+GET  /api/sources/{source_id}/entries   List entries for a source
+GET  /api/entries/{entry_id}            Get entry with format snapshot
+```
+
+### Subscriptions
+```
+POST /api/subscriptions                 Create subscription
+GET  /api/subscriptions                 List subscriptions
+GET  /api/subscriptions/{sub_id}        Get subscription with filters
+PATCH /api/subscriptions/{sub_id}       Update subscription
+DELETE /api/subscriptions/{sub_id}      Delete subscription
+POST /api/subscriptions/{sub_id}/check  Trigger manual check
+```
+
+### Compilations
+```
+POST /api/compilations                  Merge entries into one file
+```
+
+### Library
+```
+GET  /api/library                       List downloaded files
+GET  /api/library/download/{filename}   Download a file
+DELETE /api/library/{filename}          Delete a file
+POST /api/library/merge                 Merge files by filename
+POST /api/library/zip                   Create ZIP of selected files
+DELETE /api/library/zip/{filename}      Delete ZIP after download
+```
+
+### Storage
+```
+GET  /api/storage/usage                 Disk usage stats
+GET  /api/storage/presets               Available retention/strategy options
+POST /api/storage/retention             Run retention cleanup
+POST /api/storage/disk-guard            Run disk space guard cleanup
+```
+
+### Health
+```
+GET  /health                            System health check
+```
+
+</details>
+
+---
+
+## Configuration Reference
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `UYT_PORT` | `8000` | Backend API port |
+| `UYT_FRONTEND_PORT` | `3000` | Frontend port |
+| `UYT_CONCURRENCY_MODE` | `balanced` | Download concurrency: `safe` (1), `balanced` (3), `power` (6) |
+| `UYT_SPONSORBLOCK_DEFAULT` | `keep` | Default SponsorBlock action: `keep`, `mark_chapters`, `remove` |
+| `UYT_RETENTION` | `forever` | File retention: `1_day`, `1_week`, `1_month`, `3_months`, `6_months`, `1_year`, `forever` |
+| `UYT_DISK_GUARD_PCT` | `10` | Auto-cleanup when free disk space below this % |
+| `UYT_DISK_GUARD_STRATEGY` | `oldest_first` | Cleanup order: `oldest_first`, `newest_first`, `largest_first`, `smallest_first` |
+| `PUID` | `1000` | File owner UID (Unraid: `99`) |
+| `PGID` | `1000` | File owner GID (Unraid: `100`) |
+| `TZ` | `UTC` | Timezone |
+| `NVIDIA_VISIBLE_DEVICES` | `void` | GPU access (`all` to enable) |
+
+### Volumes
+
+| Container Path | Purpose |
+|---------------|---------|
+| `/config` | Cookies, logs, job logs |
+| `/downloads` | Completed downloads (served via Library) |
+| `/work` | In-progress downloads, temp/staging |
+
+### Quality Presets
+
+**Video:**
+| Preset | Hint |
+|--------|------|
+| `best` | Best Available |
+| `2160p` | 4K (Best Quality) |
+| `1080p` | Recommended |
+| `720p` | Balanced |
+| `480p` | Smallest Size |
+
+**Audio:**
+| Preset | Hint |
+|--------|------|
+| `best` | Best Available |
+| `audio_320k` | Best Quality |
+| `audio_192k` | Recommended |
+| `audio_128k` | Good |
+| `audio_64k` | Smallest Size |
+
+---
 
 ## Development
 
-### Local dev (without Docker)
+### Local dev (requires Postgres + Redis running)
 
 ```bash
 # Backend
-cd backend
-pip install -e .
+cd backend && pip install -e .
 uvicorn app.main:app --reload
 
 # Worker
 celery -A app.celery_app:celery worker -Q probe,download --loglevel=info
 
-# Beat (subscription scheduler)
+# Beat
 celery -A app.celery_app:celery beat --loglevel=info
 
 # Frontend
-cd frontend
-npm install
-npm run dev
+cd frontend && npm install && npm run dev
 ```
 
 ### Database migrations
 
 ```bash
-# Generate migration
 docker compose exec backend bash -c "PYTHONPATH=/app alembic revision --autogenerate -m 'description'"
-
-# Apply
 docker compose exec backend bash -c "PYTHONPATH=/app alembic upgrade head"
 ```
 
-## Volumes
-
-| Path | Purpose |
-|------|---------|
-| `config/` | Cookies, logs, job logs |
-| `downloads/` | Completed downloads (served via Library API) |
-| `work/` | In-progress downloads, staging |
-
-## Roadmap
-
-### V1 + V1.5 (Current)
-- URL/playlist/channel probe + preview
-- Video/audio/both download with quality selection (480p to 4K)
-- Queue/download manager with 8-stage pipeline
-- ffmpeg merge + SponsorBlock mark/remove
-- Subtitle embedding + audio normalization
-- Archive/dedup
-- GPU acceleration (NVENC/Metal/VA-API/CPU)
-- Channel subscriptions + auto-download with filters
-- Compilation builder (merge multiple videos with chapters)
-- Library browser with file download
-- Storage management (retention + disk guard)
-- Real-time progress tracking
-
-### V2 (Future)
-- Browser extension handoff
-- Transcript indexing + full-text search
-- Background listener mode (audio-first batch)
-- Output profiles (Plex-compatible, podcast-friendly)
-- Mobile-friendly remote UI
+---
 
 ## License
 
