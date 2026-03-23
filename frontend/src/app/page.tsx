@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { submitProbe, pollProbe, createJobs, type Entry, type Source } from "@/lib/api";
+import { submitProbe, pollProbe, createJobs, createSubscription, type Entry, type Source } from "@/lib/api";
 
 type Phase = "input" | "probing" | "select" | "queued" | "error";
 
@@ -151,12 +151,33 @@ export default function Home() {
               {source.thumbnail_url && (
                 <img src={source.thumbnail_url} alt="" className="w-16 h-16 rounded object-cover" />
               )}
-              <div>
+              <div className="flex-1">
                 <h2 className="font-semibold">{source.title || "Unknown"}</h2>
                 <p className="text-sm text-gray-500">
                   {source.type} &middot; {source.uploader || "Unknown"} &middot; {entries.length} items
                 </p>
               </div>
+              {(source.type === "playlist" || source.type === "channel") && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await createSubscription({
+                        source_id: source.id,
+                        format_mode: formatMode,
+                        quality,
+                        sponsorblock_action: sponsorblock,
+                        filters: [{ filter_type: "ignore_shorts" }],
+                      });
+                      alert("Subscribed! New videos will be downloaded automatically.");
+                    } catch (e) {
+                      alert(e instanceof Error ? e.message : "Failed to subscribe");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-xs font-medium hover:bg-purple-700 flex-shrink-0"
+                >
+                  Subscribe
+                </button>
+              )}
             </div>
           </div>
 
