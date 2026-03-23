@@ -102,6 +102,7 @@ export interface Artifact {
   size_bytes: number | null;
   duration: number | null;
   mime_type: string | null;
+  download_url: string | null;
   created_at: string;
 }
 

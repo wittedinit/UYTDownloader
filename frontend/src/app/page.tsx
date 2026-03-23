@@ -13,7 +13,6 @@ export default function Home() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  // Download options
   const [formatMode, setFormatMode] = useState("video_audio");
   const [quality, setQuality] = useState("best");
   const [sponsorblock, setSponsorblock] = useState("keep");
@@ -95,67 +94,73 @@ export default function Home() {
   };
 
   return (
-    <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">UYTDownloader</h1>
-        <div className="flex gap-3">
-          <a href="/library" className="text-sm text-blue-600 hover:underline">Library</a>
-          <a href="/subscriptions" className="text-sm text-blue-600 hover:underline">Subscriptions</a>
-          <a href="/jobs" className="text-sm text-blue-600 hover:underline">Jobs</a>
-        </div>
+    <div className="p-8 max-w-5xl">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-1">Download</h1>
+        <p className="text-sm text-[var(--muted)]">Paste a YouTube URL to probe and download videos</p>
       </div>
 
-      {/* URL Input */}
-      <div className="flex gap-2 mb-6">
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleProbe()}
-          placeholder="Paste YouTube URL (video, playlist, or channel)"
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-          disabled={phase === "probing"}
-        />
-        <button
-          onClick={handleProbe}
-          disabled={phase === "probing" || !url.trim()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {phase === "probing" ? "Probing..." : "Probe"}
-        </button>
+      {/* URL Input Card */}
+      <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-6 mb-6">
+        <label className="block text-xs font-medium text-[var(--muted)] mb-2 uppercase tracking-wider">YouTube URL</label>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleProbe()}
+            placeholder="https://youtube.com/watch?v=... or playlist or channel URL"
+            className="flex-1 px-4 py-3 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-[var(--muted)]"
+            disabled={phase === "probing"}
+          />
+          <button
+            onClick={handleProbe}
+            disabled={phase === "probing" || !url.trim()}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {phase === "probing" ? (
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                Probing
+              </span>
+            ) : "Probe"}
+          </button>
+        </div>
       </div>
 
       {/* Error */}
       {phase === "error" && (
-        <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
-          {error}
-          <button onClick={() => setPhase("input")} className="ml-2 underline">
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setPhase("input")} className="text-red-300 hover:text-white text-xs font-medium px-3 py-1 rounded-md bg-red-500/20 hover:bg-red-500/30 transition-colors">
             Try again
           </button>
         </div>
       )}
 
-      {/* Probing spinner */}
+      {/* Probing state */}
       {phase === "probing" && (
-        <div className="text-center py-12 text-gray-500">
-          <div className="inline-block w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mb-4" />
-          <p>Extracting metadata...</p>
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center">
+          <div className="inline-block w-10 h-10 border-3 border-indigo-400/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
+          <p className="text-[var(--muted)]">Extracting metadata...</p>
         </div>
       )}
 
       {/* Selection phase */}
       {phase === "select" && source && (
-        <div>
-          {/* Source info */}
-          <div className="mb-4 p-4 bg-gray-50 rounded-md dark:bg-gray-800">
-            <div className="flex items-center gap-3">
+        <>
+          {/* Source card */}
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-5 mb-6">
+            <div className="flex items-center gap-4">
               {source.thumbnail_url && (
-                <img src={source.thumbnail_url} alt="" className="w-16 h-16 rounded object-cover" />
+                <img src={source.thumbnail_url} alt="" className="w-20 h-14 rounded-lg object-cover" />
               )}
-              <div className="flex-1">
-                <h2 className="font-semibold">{source.title || "Unknown"}</h2>
-                <p className="text-sm text-gray-500">
-                  {source.type} &middot; {source.uploader || "Unknown"} &middot; {entries.length} items
+              <div className="flex-1 min-w-0">
+                <h2 className="font-semibold text-lg truncate">{source.title || "Unknown"}</h2>
+                <p className="text-sm text-[var(--muted)]">
+                  <span className="inline-block px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded text-xs font-medium mr-2">{source.type}</span>
+                  {source.uploader || "Unknown"} &middot; {entries.length} item{entries.length !== 1 ? "s" : ""}
                 </p>
               </div>
               {(source.type === "playlist" || source.type === "channel") && (
@@ -174,7 +179,7 @@ export default function Home() {
                       alert(e instanceof Error ? e.message : "Failed to subscribe");
                     }
                   }}
-                  className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-xs font-medium hover:bg-purple-700 flex-shrink-0"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 transition-colors flex-shrink-0"
                 >
                   Subscribe
                 </button>
@@ -182,144 +187,127 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Download options */}
-          <div className="mb-4 grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Output</label>
-              <select
-                value={formatMode}
-                onChange={(e) => setFormatMode(e.target.value)}
-                className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
-              >
-                <option value="video_audio">Video + Audio</option>
-                <option value="audio_only">Audio Only</option>
-                <option value="video_only">Video Only</option>
-              </select>
+          {/* Options card */}
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-5 mb-6">
+            <h3 className="text-xs font-medium text-[var(--muted)] mb-4 uppercase tracking-wider">Download Options</h3>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-xs text-[var(--muted)] mb-1.5">Output</label>
+                <select value={formatMode} onChange={(e) => setFormatMode(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="video_audio">Video + Audio</option>
+                  <option value="audio_only">Audio Only</option>
+                  <option value="video_only">Video Only</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--muted)] mb-1.5">Quality</label>
+                <select value={quality} onChange={(e) => setQuality(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="best">Best Available</option>
+                  <option value="2160p">2160p (4K)</option>
+                  <option value="1080p">1080p</option>
+                  <option value="720p">720p</option>
+                  <option value="480p">480p</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--muted)] mb-1.5">SponsorBlock</label>
+                <select value={sponsorblock} onChange={(e) => setSponsorblock(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="keep">Keep All</option>
+                  <option value="mark_chapters">Mark as Chapters</option>
+                  <option value="remove">Remove Sponsors</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Quality</label>
-              <select
-                value={quality}
-                onChange={(e) => setQuality(e.target.value)}
-                className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
-              >
-                <option value="best">Best Available</option>
-                <option value="2160p">2160p (4K)</option>
-                <option value="1080p">1080p</option>
-                <option value="720p">720p</option>
-                <option value="480p">480p</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">SponsorBlock</label>
-              <select
-                value={sponsorblock}
-                onChange={(e) => setSponsorblock(e.target.value)}
-                className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
-              >
-                <option value="keep">Keep All</option>
-                <option value="mark_chapters">Mark as Chapters</option>
-                <option value="remove">Remove Sponsors</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Post-processing options */}
-          <div className="mb-4 flex gap-6">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={embedSubs}
-                onChange={(e) => setEmbedSubs(e.target.checked)}
-                className="w-4 h-4 rounded"
-              />
-              Embed subtitles
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={normalizeAudio}
-                onChange={(e) => setNormalizeAudio(e.target.checked)}
-                className="w-4 h-4 rounded"
-              />
-              Normalize audio
-            </label>
-          </div>
-
-          {/* Entry list */}
-          <div className="mb-4 flex items-center justify-between">
-            <button onClick={toggleAll} className="text-sm text-blue-600 hover:underline">
-              {selected.size === entries.length ? "Deselect All" : "Select All"}
-            </button>
-            <span className="text-sm text-gray-500">{selected.size} selected</span>
-          </div>
-
-          <div className="space-y-1 max-h-96 overflow-y-auto mb-6">
-            {entries.map((entry) => (
-              <label
-                key={entry.id}
-                className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer dark:hover:bg-gray-800"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.has(entry.id)}
-                  onChange={() => toggleEntry(entry.id)}
-                  className="w-4 h-4 rounded"
-                />
-                {entry.thumbnail_url && (
-                  <img src={entry.thumbnail_url} alt="" className="w-20 h-12 rounded object-cover flex-shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{entry.title}</p>
-                  <p className="text-xs text-gray-500">
-                    {formatDuration(entry.duration)}
-                    {entry.upload_date && ` \u00b7 ${entry.upload_date}`}
-                  </p>
-                </div>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 text-sm cursor-pointer text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">
+                <input type="checkbox" checked={embedSubs} onChange={(e) => setEmbedSubs(e.target.checked)}
+                  className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500" />
+                Embed subtitles
               </label>
-            ))}
+              <label className="flex items-center gap-2 text-sm cursor-pointer text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">
+                <input type="checkbox" checked={normalizeAudio} onChange={(e) => setNormalizeAudio(e.target.checked)}
+                  className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500" />
+                Normalize audio
+              </label>
+            </div>
+          </div>
+
+          {/* Entries card */}
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl overflow-hidden mb-6">
+            <div className="px-5 py-3 border-b border-[var(--card-border)] flex items-center justify-between">
+              <button onClick={toggleAll} className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+                {selected.size === entries.length ? "Deselect All" : "Select All"}
+              </button>
+              <span className="text-sm text-[var(--muted)]">{selected.size} of {entries.length} selected</span>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto divide-y divide-[var(--card-border)]">
+              {entries.map((entry) => (
+                <label
+                  key={entry.id}
+                  className={`flex items-center gap-4 px-5 py-3 cursor-pointer transition-colors ${
+                    selected.has(entry.id) ? "bg-indigo-500/5" : "hover:bg-[var(--background)]"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(entry.id)}
+                    onChange={() => toggleEntry(entry.id)}
+                    className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500"
+                  />
+                  {entry.thumbnail_url && (
+                    <img src={entry.thumbnail_url} alt="" className="w-24 h-14 rounded-md object-cover flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{entry.title}</p>
+                    <p className="text-xs text-[var(--muted)] mt-0.5">
+                      {formatDuration(entry.duration)}
+                      {entry.upload_date && ` \u00b7 ${entry.upload_date}`}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Download button */}
           <button
             onClick={handleDownload}
             disabled={selected.size === 0}
-            className="w-full py-3 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-semibold text-base hover:from-emerald-700 hover:to-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-900/20"
           >
             Download {selected.size} item{selected.size !== 1 ? "s" : ""}
           </button>
-        </div>
+        </>
       )}
 
       {/* Queued confirmation */}
       {phase === "queued" && (
-        <div className="text-center py-12">
-          <p className="text-lg font-medium text-green-600 mb-2">Jobs queued!</p>
-          <p className="text-sm text-gray-500 mb-4">
-            {selected.size} download{selected.size !== 1 ? "s" : ""} added to the queue.
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-xl font-semibold mb-2">Jobs Queued</p>
+          <p className="text-sm text-[var(--muted)] mb-6">
+            {selected.size} download{selected.size !== 1 ? "s" : ""} added to the queue
           </p>
           <div className="flex gap-3 justify-center">
-            <a
-              href="/jobs"
-              className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
-            >
+            <a href="/jobs" className="px-5 py-2.5 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm font-medium hover:bg-[var(--card-border)] transition-colors">
               View Jobs
             </a>
             <button
-              onClick={() => {
-                setPhase("input");
-                setUrl("");
-                setSource(null);
-                setEntries([]);
-                setSelected(new Set());
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+              onClick={() => { setPhase("input"); setUrl(""); setSource(null); setEntries([]); setSelected(new Set()); }}
+              className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
             >
               Download More
             </button>
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

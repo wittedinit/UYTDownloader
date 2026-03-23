@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { listJobs, cancelJob, retryJob, getJob, type Job, type JobDetail } from "@/lib/api";
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-gray-100 text-gray-700",
-  queued: "bg-yellow-100 text-yellow-800",
-  running: "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
-  cancelled: "bg-gray-200 text-gray-600",
+const STATUS_STYLES: Record<string, string> = {
+  pending: "bg-slate-500/10 text-slate-400",
+  queued: "bg-amber-500/10 text-amber-400",
+  running: "bg-blue-500/10 text-blue-400",
+  completed: "bg-emerald-500/10 text-emerald-400",
+  failed: "bg-red-500/10 text-red-400",
+  cancelled: "bg-slate-500/10 text-slate-500",
 };
 
 export default function JobsPage() {
@@ -24,11 +24,7 @@ export default function JobsPage() {
       const res = await listJobs({ status: filter || undefined });
       setJobs(res.jobs);
       setTotal(res.total);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
+    } catch { /* ignore */ } finally { setLoading(false); }
   }, [filter]);
 
   useEffect(() => {
@@ -37,135 +33,83 @@ export default function JobsPage() {
     return () => clearInterval(interval);
   }, [fetchJobs]);
 
-  const handleCancel = async (jobId: string) => {
-    try {
-      await cancelJob(jobId);
-      fetchJobs();
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleRetry = async (jobId: string) => {
-    try {
-      await retryJob(jobId);
-      fetchJobs();
-    } catch {
-      // ignore
-    }
-  };
-
-  const showDetail = async (jobId: string) => {
-    try {
-      const d = await getJob(jobId);
-      setDetail(d);
-    } catch {
-      // ignore
-    }
-  };
+  const handleCancel = async (jobId: string) => { try { await cancelJob(jobId); fetchJobs(); } catch {} };
+  const handleRetry = async (jobId: string) => { try { await retryJob(jobId); fetchJobs(); } catch {} };
+  const showDetail = async (jobId: string) => { try { setDetail(await getJob(jobId)); } catch {} };
 
   const formatBytes = (bytes: number | null) => {
     if (!bytes) return "-";
-    if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
   return (
-    <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Jobs</h1>
-        <div className="flex gap-3">
-          <a href="/library" className="text-sm text-blue-600 hover:underline">Library</a>
-          <a href="/subscriptions" className="text-sm text-blue-600 hover:underline">Subscriptions</a>
-          <a href="/" className="text-sm text-blue-600 hover:underline">New Download</a>
-        </div>
+    <div className="p-8 max-w-5xl">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-1">Jobs</h1>
+        <p className="text-sm text-[var(--muted)]">Monitor download progress and manage queued jobs</p>
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-2 mb-4">
+      {/* Filters */}
+      <div className="flex gap-2 mb-6">
         {["", "queued", "running", "completed", "failed"].map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className={`px-3 py-1 text-sm rounded-full border ${
+            className={`px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
               filter === s
-                ? "bg-blue-600 text-white border-blue-600"
-                : "border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+                ? "bg-indigo-600 text-white"
+                : "bg-[var(--card)] border border-[var(--card-border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--muted)]"
             }`}
           >
             {s || "All"}
           </button>
         ))}
-        <span className="text-sm text-gray-500 self-center ml-auto">{total} total</span>
+        <span className="text-sm text-[var(--muted)] self-center ml-auto">{total} total</span>
       </div>
 
       {loading ? (
-        <p className="text-center py-8 text-gray-500">Loading...</p>
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center text-[var(--muted)]">Loading...</div>
       ) : jobs.length === 0 ? (
-        <p className="text-center py-8 text-gray-500">No jobs yet</p>
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center text-[var(--muted)]">No jobs yet</div>
       ) : (
         <div className="space-y-2">
           {jobs.map((job) => (
-            <div
-              key={job.id}
-              className="p-3 border rounded-md hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-            >
-              <div className="flex items-center gap-3">
+            <div key={job.id} className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 transition-colors hover:border-[var(--muted)]">
+              <div className="flex items-center gap-4">
                 {job.entry_thumbnail && (
-                  <img src={job.entry_thumbnail} alt="" className="w-16 h-10 rounded object-cover flex-shrink-0" />
+                  <img src={job.entry_thumbnail} alt="" className="w-20 h-12 rounded-lg object-cover flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{job.entry_title || job.id}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded-full font-medium ${STATUS_COLORS[job.status] || ""}`}
-                    >
+                    <span className={`px-2 py-0.5 text-xs rounded-md font-medium ${STATUS_STYLES[job.status] || ""}`}>
                       {job.status}
                     </span>
                     {job.status === "running" && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-[var(--muted)]">
                         {job.progress_pct.toFixed(0)}%
                         {job.speed_bps ? ` \u00b7 ${formatBytes(job.speed_bps)}/s` : ""}
                       </span>
                     )}
                     {job.error_message && (
-                      <span className="text-xs text-red-500 truncate max-w-xs">{job.error_message}</span>
+                      <span className="text-xs text-red-400 truncate max-w-xs">{job.error_message}</span>
                     )}
                   </div>
-                  {/* Progress bar */}
                   {job.status === "running" && (
-                    <div className="mt-1 h-1 bg-gray-200 rounded-full overflow-hidden dark:bg-gray-700">
-                      <div
-                        className="h-full bg-blue-500 transition-all"
-                        style={{ width: `${job.progress_pct}%` }}
-                      />
+                    <div className="mt-2 h-1.5 bg-[var(--background)] rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500" style={{ width: `${job.progress_pct}%` }} />
                     </div>
                   )}
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => showDetail(job.id)}
-                    className="px-2 py-1 text-xs border rounded hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
-                  >
-                    Details
-                  </button>
-                  {(job.status === "pending" || job.status === "queued" || job.status === "running") && (
-                    <button
-                      onClick={() => handleCancel(job.id)}
-                      className="px-2 py-1 text-xs border border-red-300 text-red-600 rounded hover:bg-red-50"
-                    >
-                      Cancel
-                    </button>
+                <div className="flex gap-2">
+                  <button onClick={() => showDetail(job.id)} className="px-3 py-1.5 text-xs font-medium bg-[var(--background)] border border-[var(--card-border)] rounded-lg hover:border-[var(--muted)] transition-colors">Details</button>
+                  {["pending", "queued", "running"].includes(job.status) && (
+                    <button onClick={() => handleCancel(job.id)} className="px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">Cancel</button>
                   )}
                   {job.status === "failed" && (
-                    <button
-                      onClick={() => handleRetry(job.id)}
-                      className="px-2 py-1 text-xs border border-blue-300 text-blue-600 rounded hover:bg-blue-50"
-                    >
-                      Retry
-                    </button>
+                    <button onClick={() => handleRetry(job.id)} className="px-3 py-1.5 text-xs font-medium border border-indigo-500/30 text-indigo-400 rounded-lg hover:bg-indigo-500/10 transition-colors">Retry</button>
                   )}
                 </div>
               </div>
@@ -176,69 +120,60 @@ export default function JobsPage() {
 
       {/* Detail modal */}
       {detail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">{detail.entry_title || "Job Detail"}</h2>
-              <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600 text-xl">
-                &times;
-              </button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setDetail(null)}>
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-lg font-semibold truncate pr-4">{detail.entry_title || "Job Detail"}</h2>
+              <button onClick={() => setDetail(null)} className="w-8 h-8 rounded-lg bg-[var(--background)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">&times;</button>
             </div>
 
-            {/* Request info */}
             {detail.request && (
-              <div className="mb-4 p-3 bg-gray-50 rounded text-sm dark:bg-gray-800">
-                <p>Format: {detail.request.format_mode}</p>
-                <p>Container: {detail.request.container}</p>
-                <p>SponsorBlock: {detail.request.sponsorblock_action}</p>
-                {detail.request.max_height && <p>Max height: {detail.request.max_height}p</p>}
+              <div className="mb-5 p-4 bg-[var(--background)] rounded-xl text-sm space-y-1">
+                <p><span className="text-[var(--muted)]">Format:</span> {detail.request.format_mode}</p>
+                <p><span className="text-[var(--muted)]">Container:</span> {detail.request.container}</p>
+                <p><span className="text-[var(--muted)]">SponsorBlock:</span> {detail.request.sponsorblock_action}</p>
+                {detail.request.max_height && <p><span className="text-[var(--muted)]">Max height:</span> {detail.request.max_height}p</p>}
               </div>
             )}
 
-            {/* Stages */}
-            <h3 className="text-sm font-semibold mb-2">Stages</h3>
-            <div className="space-y-1 mb-4">
+            <h3 className="text-xs font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">Stages</h3>
+            <div className="space-y-2 mb-5">
               {detail.stages.map((stage) => (
-                <div key={stage.id} className="flex items-center gap-2 text-sm">
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                    stage.status === "completed" ? "bg-green-500" :
-                    stage.status === "running" ? "bg-blue-500 animate-pulse" :
-                    stage.status === "failed" ? "bg-red-500" : "bg-gray-300"
+                <div key={stage.id} className="flex items-center gap-3 text-sm">
+                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                    stage.status === "completed" ? "bg-emerald-400" :
+                    stage.status === "running" ? "bg-blue-400 animate-pulse" :
+                    stage.status === "failed" ? "bg-red-400" : "bg-slate-500"
                   }`} />
                   <span className="flex-1">{stage.type.replace(/_/g, " ")}</span>
-                  <span className={`text-xs ${STATUS_COLORS[stage.status] || ""} px-1.5 py-0.5 rounded`}>
-                    {stage.status}
-                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-md ${STATUS_STYLES[stage.status] || ""}`}>{stage.status}</span>
                 </div>
               ))}
             </div>
 
-            {/* Artifacts */}
             {detail.artifacts.length > 0 && (
               <>
-                <h3 className="text-sm font-semibold mb-2">Artifacts</h3>
-                <div className="space-y-1">
+                <h3 className="text-xs font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">Artifacts</h3>
+                <div className="space-y-2">
                   {detail.artifacts.map((a) => (
-                    <div key={a.id} className="text-sm p-2 bg-gray-50 rounded dark:bg-gray-800">
-                      <p className="font-medium truncate">{a.filename}</p>
-                      <p className="text-xs text-gray-500">
-                        {a.kind} &middot; {formatBytes(a.size_bytes)}
-                      </p>
+                    <div key={a.id} className="p-3 bg-[var(--background)] rounded-xl">
+                      <p className="text-sm font-medium truncate">{a.filename}</p>
+                      <p className="text-xs text-[var(--muted)] mt-0.5">{a.kind} &middot; {formatBytes(a.size_bytes)}</p>
+                      {a.download_url && (
+                        <a href={a.download_url} download className="text-xs text-indigo-400 hover:text-indigo-300 mt-1 inline-block">Download</a>
+                      )}
                     </div>
                   ))}
                 </div>
               </>
             )}
 
-            {/* Error */}
             {detail.error_message && (
-              <div className="mt-4 p-3 bg-red-50 rounded text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
-                {detail.error_message}
-              </div>
+              <div className="mt-5 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">{detail.error_message}</div>
             )}
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

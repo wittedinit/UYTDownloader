@@ -3,172 +3,134 @@
 import { useState, useEffect, useCallback } from "react";
 import { listLibraryFiles, deleteLibraryFile, type LibraryFile } from "@/lib/api";
 
-const API_BASE = typeof window !== "undefined"
-  ? window.location.hostname.endsWith(".orb.local")
-    ? "http://uyt-backend-1.orb.local:8000"
-    : `${window.location.protocol}//${window.location.hostname}:8000`
-  : "http://localhost:8000";
+function resolveApiBase(): string {
+  if (typeof window !== "undefined") {
+    if (window.location.hostname.endsWith(".orb.local")) return "http://uyt-backend-1.orb.local:8000";
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }
+  return "http://localhost:8000";
+}
 
 export default function LibraryPage() {
   const [files, setFiles] = useState<LibraryFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const apiBase = resolveApiBase();
 
   const fetchFiles = useCallback(async () => {
-    try {
-      const res = await listLibraryFiles();
-      setFiles(res.files);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
+    try { const res = await listLibraryFiles(); setFiles(res.files); }
+    catch {} finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    fetchFiles();
-  }, [fetchFiles]);
+  useEffect(() => { fetchFiles(); }, [fetchFiles]);
 
-  const toggleFile = (filename: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(filename)) next.delete(filename);
-      else next.add(filename);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    if (selected.size === files.length) setSelected(new Set());
-    else setSelected(new Set(files.map((f) => f.filename)));
-  };
+  const toggleFile = (f: string) => setSelected((prev) => { const n = new Set(prev); if (n.has(f)) n.delete(f); else n.add(f); return n; });
+  const toggleAll = () => { if (selected.size === files.length) setSelected(new Set()); else setSelected(new Set(files.map((f) => f.filename))); };
 
   const handleDownloadSelected = () => {
-    // Download each selected file by opening download URLs
     for (const filename of selected) {
-      const file = files.find((f) => f.filename === filename);
-      if (file) {
-        const link = document.createElement("a");
-        link.href = `${API_BASE}/api/library/download/${encodeURIComponent(file.filename)}`;
-        link.download = file.filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      const link = document.createElement("a");
+      link.href = `${apiBase}/api/library/download/${encodeURIComponent(filename)}`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
   const handleDelete = async (filename: string) => {
     if (!confirm(`Delete "${filename}"?`)) return;
-    try {
-      await deleteLibraryFile(filename);
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(filename);
-        return next;
-      });
-      fetchFiles();
-    } catch {
-      alert("Failed to delete file");
-    }
+    try { await deleteLibraryFile(filename); setSelected((p) => { const n = new Set(p); n.delete(filename); return n; }); fetchFiles(); }
+    catch { alert("Failed to delete"); }
   };
 
-  const formatBytes = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  const formatBytes = (b: number) => {
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
   const formatDate = (ts: number) => new Date(ts * 1000).toLocaleString();
 
   const iconForExt = (ext: string) => {
-    if ([".mp4", ".mkv", ".webm", ".avi"].includes(ext)) return "🎬";
-    if ([".mp3", ".m4a", ".opus", ".ogg", ".webm"].includes(ext)) return "🎵";
-    return "📄";
+    if ([".mp4", ".mkv", ".webm", ".avi"].includes(ext)) return "video";
+    if ([".mp3", ".m4a", ".opus", ".ogg", ".webm"].includes(ext)) return "audio";
+    return "file";
   };
 
   return (
-    <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Library</h1>
-        <div className="flex gap-3">
-          <a href="/subscriptions" className="text-sm text-blue-600 hover:underline">Subscriptions</a>
-          <a href="/jobs" className="text-sm text-blue-600 hover:underline">Jobs</a>
-          <a href="/" className="text-sm text-blue-600 hover:underline">New Download</a>
-        </div>
+    <div className="p-8 max-w-5xl">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-1">Library</h1>
+        <p className="text-sm text-[var(--muted)]">Browse and download completed files</p>
       </div>
 
       {loading ? (
-        <p className="text-center py-8 text-gray-500">Loading...</p>
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center text-[var(--muted)]">Loading...</div>
       ) : files.length === 0 ? (
-        <p className="text-center py-8 text-gray-500">No downloads yet</p>
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center text-[var(--muted)]">No downloads yet</div>
       ) : (
         <>
-          {/* Actions bar */}
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={toggleAll} className="text-sm text-blue-600 hover:underline">
+          {/* Stats bar */}
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button onClick={toggleAll} className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
                 {selected.size === files.length ? "Deselect All" : "Select All"}
               </button>
-              <span className="text-sm text-gray-500">{selected.size} selected</span>
+              <span className="text-sm text-[var(--muted)]">{selected.size} selected</span>
             </div>
-            {selected.size > 0 && (
-              <button
-                onClick={handleDownloadSelected}
-                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
-              >
-                Download {selected.size} file{selected.size !== 1 ? "s" : ""}
-              </button>
-            )}
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-[var(--muted)]">{files.length} files &middot; {formatBytes(files.reduce((s, f) => s + f.size_bytes, 0))}</span>
+              {selected.size > 0 && (
+                <button onClick={handleDownloadSelected}
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-green-700 transition-all">
+                  Download {selected.size} file{selected.size !== 1 ? "s" : ""}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* File list */}
-          <div className="space-y-1">
-            {files.map((file) => (
-              <label
-                key={file.filename}
-                className="flex items-center gap-3 p-3 rounded-md hover:bg-gray-50 cursor-pointer dark:hover:bg-gray-800"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.has(file.filename)}
-                  onChange={() => toggleFile(file.filename)}
-                  className="w-4 h-4 rounded"
-                />
-                <span className="text-lg flex-shrink-0">{iconForExt(file.extension)}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{file.filename}</p>
-                  <p className="text-xs text-gray-500">
-                    {formatBytes(file.size_bytes)} &middot; {formatDate(file.modified_at)}
-                  </p>
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <a
-                    href={`${API_BASE}/api/library/download/${encodeURIComponent(file.filename)}`}
-                    download={file.filename}
-                    className="px-2 py-1 text-xs border rounded hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Download
-                  </a>
-                  <button
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(file.filename); }}
-                    className="px-2 py-1 text-xs border border-red-300 text-red-600 rounded hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </label>
-            ))}
-          </div>
-
-          {/* Total size */}
-          <div className="mt-4 text-sm text-gray-500 text-right">
-            {files.length} files &middot; {formatBytes(files.reduce((sum, f) => sum + f.size_bytes, 0))} total
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl overflow-hidden">
+            <div className="divide-y divide-[var(--card-border)]">
+              {files.map((file) => (
+                <label key={file.filename}
+                  className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors ${selected.has(file.filename) ? "bg-indigo-500/5" : "hover:bg-[var(--background)]"}`}>
+                  <input type="checkbox" checked={selected.has(file.filename)} onChange={() => toggleFile(file.filename)}
+                    className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500" />
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    iconForExt(file.extension) === "video" ? "bg-blue-500/10" : iconForExt(file.extension) === "audio" ? "bg-purple-500/10" : "bg-slate-500/10"
+                  }`}>
+                    <svg className={`w-5 h-5 ${iconForExt(file.extension) === "video" ? "text-blue-400" : iconForExt(file.extension) === "audio" ? "text-purple-400" : "text-slate-400"}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      {iconForExt(file.extension) === "video" ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9.75a2.25 2.25 0 002.25-2.25V7.5a2.25 2.25 0 00-2.25-2.25H4.5A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V4.5A2.25 2.25 0 0117.25 2.25H21" />
+                      )}
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{file.filename}</p>
+                    <p className="text-xs text-[var(--muted)] mt-0.5">{formatBytes(file.size_bytes)} &middot; {formatDate(file.modified_at)}</p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <a href={`${apiBase}/api/library/download/${encodeURIComponent(file.filename)}`} download={file.filename}
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-3 py-1.5 text-xs font-medium bg-[var(--background)] border border-[var(--card-border)] rounded-lg hover:border-[var(--muted)] transition-colors">
+                      Download
+                    </a>
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(file.filename); }}
+                      className="px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
+                      Delete
+                    </button>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
         </>
       )}
-    </main>
+    </div>
   );
 }
