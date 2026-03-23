@@ -148,6 +148,8 @@ export async function createJobs(params: {
   format_mode?: string;
   quality?: string;
   sponsorblock_action?: string;
+  embed_subtitles?: boolean;
+  normalize_audio?: boolean;
 }) {
   return apiFetch<{ jobs: Job[] }>("/api/jobs", {
     method: "POST",

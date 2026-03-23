@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -17,8 +17,8 @@ class Subscription(TimestampMixin, Base):
     )
     enabled: Mapped[bool] = mapped_column(default=True)
     check_interval_minutes: Mapped[int] = mapped_column(default=360)
-    last_checked_at: Mapped[datetime | None]
-    next_check_at: Mapped[datetime | None]
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     auto_download: Mapped[bool] = mapped_column(default=True)
     format_mode: Mapped[str] = mapped_column(String(64), default="video_audio")
     quality: Mapped[str] = mapped_column(String(64), default="best")

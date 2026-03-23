@@ -52,6 +52,7 @@ async def create_subscription(req: SubscriptionCreateRequest, db: AsyncSession =
     await db.flush()
 
     # Add filters
+    created_filters = []
     for f in req.filters:
         sf = SubscriptionFilter(
             subscription_id=sub.id,
@@ -60,10 +61,36 @@ async def create_subscription(req: SubscriptionCreateRequest, db: AsyncSession =
             enabled=f.enabled,
         )
         db.add(sf)
+        created_filters.append(sf)
 
     await db.flush()
 
-    return _sub_to_detail(sub, source)
+    return SubscriptionDetail(
+        id=sub.id,
+        source_id=sub.source_id,
+        enabled=sub.enabled,
+        check_interval_minutes=sub.check_interval_minutes,
+        last_checked_at=sub.last_checked_at,
+        next_check_at=sub.next_check_at,
+        auto_download=sub.auto_download,
+        format_mode=sub.format_mode,
+        quality=sub.quality,
+        sponsorblock_action=sub.sponsorblock_action,
+        created_at=sub.created_at,
+        updated_at=sub.updated_at,
+        source_title=source.title,
+        source_type=source.type.value,
+        entry_count=source.entry_count,
+        filters=[
+            SubscriptionFilterOut(
+                id=f.id,
+                filter_type=f.filter_type.value,
+                value=f.value,
+                enabled=f.enabled,
+            )
+            for f in created_filters
+        ],
+    )
 
 
 @router.get("", response_model=SubscriptionListResponse)
@@ -89,7 +116,7 @@ async def list_subscriptions(
     subs = result.scalars().all()
 
     return SubscriptionListResponse(
-        subscriptions=[_sub_to_out(s) for s in subs],
+        subscriptions=[_sub_to_out(s, s.source) for s in subs],
         total=total,
     )
 
@@ -105,7 +132,8 @@ async def get_subscription(sub_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     sub = result.scalar_one_or_none()
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
-    return _sub_to_detail(sub, sub.source)
+    source = sub.source  # Already eagerly loaded
+    return _sub_to_detail(sub, source)
 
 
 @router.patch("/{sub_id}", response_model=SubscriptionOut)
@@ -128,7 +156,8 @@ async def update_subscription(
             setattr(sub, key, value)
 
     await db.flush()
-    return _sub_to_out(sub)
+    source = sub.source  # Already loaded from prior query
+    return _sub_to_out(sub, source)
 
 
 @router.delete("/{sub_id}", status_code=204)
@@ -164,8 +193,12 @@ async def trigger_check(sub_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return {"task_id": task.id, "status": "checking"}
 
 
-def _sub_to_out(sub: Subscription) -> SubscriptionOut:
-    source = sub.source if hasattr(sub, "source") and sub.source else None
+def _sub_to_out(sub: Subscription, source: Source | None = None) -> SubscriptionOut:
+    if source is None:
+        try:
+            source = sub.source
+        except Exception:
+            source = None
     return SubscriptionOut(
         id=sub.id,
         source_id=sub.source_id,
@@ -185,8 +218,8 @@ def _sub_to_out(sub: Subscription) -> SubscriptionOut:
     )
 
 
-def _sub_to_detail(sub: Subscription, source: Source | None) -> SubscriptionDetail:
-    out = _sub_to_out(sub)
+def _sub_to_detail(sub: Subscription, source: Source | None = None) -> SubscriptionDetail:
+    out = _sub_to_out(sub, source)
     filters = []
     if hasattr(sub, "filters"):
         filters = [

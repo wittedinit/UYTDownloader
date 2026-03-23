@@ -17,6 +17,8 @@ export default function Home() {
   const [formatMode, setFormatMode] = useState("video_audio");
   const [quality, setQuality] = useState("best");
   const [sponsorblock, setSponsorblock] = useState("keep");
+  const [embedSubs, setEmbedSubs] = useState(false);
+  const [normalizeAudio, setNormalizeAudio] = useState(false);
 
   const handleProbe = useCallback(async () => {
     if (!url.trim()) return;
@@ -59,13 +61,15 @@ export default function Home() {
         format_mode: formatMode,
         quality,
         sponsorblock_action: sponsorblock,
+        embed_subtitles: embedSubs,
+        normalize_audio: normalizeAudio,
       });
       setPhase("queued");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create jobs");
       setPhase("error");
     }
-  }, [selected, formatMode, quality, sponsorblock]);
+  }, [selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio]);
 
   const toggleEntry = (id: string) => {
     setSelected((prev) => {
@@ -158,7 +162,7 @@ export default function Home() {
           {/* Download options */}
           <div className="mb-4 grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Format</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Output</label>
               <select
                 value={formatMode}
                 onChange={(e) => setFormatMode(e.target.value)}
@@ -194,6 +198,28 @@ export default function Home() {
                 <option value="remove">Remove Sponsors</option>
               </select>
             </div>
+          </div>
+
+          {/* Post-processing options */}
+          <div className="mb-4 flex gap-6">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={embedSubs}
+                onChange={(e) => setEmbedSubs(e.target.checked)}
+                className="w-4 h-4 rounded"
+              />
+              Embed subtitles
+            </label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={normalizeAudio}
+                onChange={(e) => setNormalizeAudio(e.target.checked)}
+                className="w-4 h-4 rounded"
+              />
+              Normalize audio
+            </label>
           </div>
 
           {/* Entry list */}

@@ -61,6 +61,97 @@ def check_all_subscriptions() -> dict:
     return {"checked": len(due)}
 
 
+@shared_task(bind=True, max_retries=1, default_retry_delay=30)
+def run_compilation(
+    self,
+    job_id: str,
+    stage_id: str,
+    input_files: list[dict],
+    mode: str,
+    normalize_audio: bool,
+    title: str | None,
+    output_dir: str | None,
+) -> dict:
+    """Execute a compilation (merge multiple files into one)."""
+    import os
+    import uuid
+    from datetime import datetime, timezone
+    from app.config import settings
+    from app.services.compilation_service import build_compilation
+
+    try:
+        from app.services.job_service import _get_sync_session
+        from app.models.job import Job, JobStage
+        from app.models.artifact import Artifact
+        from app.models.enums import ArtifactKind, JobStatus, StageStatus
+
+        session = _get_sync_session()
+        job = session.get(Job, uuid.UUID(job_id))
+        stage = session.get(JobStage, uuid.UUID(stage_id))
+
+        if job:
+            job.status = JobStatus.RUNNING
+        if stage:
+            stage.status = StageStatus.RUNNING
+            stage.started_at = datetime.now(timezone.utc)
+        session.commit()
+
+        # Build output path
+        out_dir = output_dir or str(settings.output_dir)
+        safe_title = title or "compilation"
+        safe_title = "".join(c if c.isalnum() or c in " ._-" else "_" for c in safe_title)
+        ext = ".m4a" if mode.startswith("audio_") else ".mp4"
+        output_path = os.path.join(out_dir, f"{safe_title}{ext}")
+
+        # Handle name collisions
+        counter = 1
+        base_path = output_path
+        while os.path.exists(output_path):
+            stem, suffix = os.path.splitext(base_path)
+            output_path = f"{stem}_{counter}{suffix}"
+            counter += 1
+
+        result = build_compilation(input_files, output_path, mode, normalize_audio)
+
+        if result.get("error"):
+            if stage:
+                stage.status = StageStatus.FAILED
+                stage.error_message = result["error"]
+                stage.finished_at = datetime.now(timezone.utc)
+            if job:
+                job.status = JobStatus.FAILED
+                job.error_message = result["error"]
+            session.commit()
+            return {"status": "failed", "error": result["error"]}
+
+        # Create artifact
+        artifact = Artifact(
+            job_id=job.id,
+            kind=ArtifactKind.MERGED,
+            path=result.get("output_path", output_path),
+            filename=os.path.basename(result.get("output_path", output_path)),
+            size_bytes=result.get("size_bytes"),
+            produced_by_stage_id=stage.id if stage else None,
+        )
+        session.add(artifact)
+
+        if stage:
+            stage.status = StageStatus.COMPLETED
+            stage.finished_at = datetime.now(timezone.utc)
+            stage.result_json = result
+        if job:
+            job.status = JobStatus.COMPLETED
+            job.progress_pct = 100.0
+        session.commit()
+        session.close()
+
+        return {"status": "completed", "result": result}
+
+    except Exception as e:
+        logger.error("Compilation failed for job %s: %s", job_id, e, exc_info=True)
+        return {"status": "failed", "error": str(e)}
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def run_stage(self, job_id: str, stage_id: str) -> dict:
     """Execute one stage of a job. Triggers next stages on completion."""
