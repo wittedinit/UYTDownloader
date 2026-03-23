@@ -42,7 +42,7 @@ class Job(TimestampMixin, Base):
     stages: Mapped[list["JobStage"]] = relationship(
         back_populates="job", cascade="all, delete-orphan", order_by="JobStage.order"
     )
-    artifacts: Mapped[list["Artifact"]] = relationship(back_populates="job")  # noqa: F821
+    artifacts: Mapped[list["Artifact"]] = relationship(back_populates="job", cascade="all, delete-orphan", passive_deletes=True)  # noqa: F821
 
 
 class JobRequest(Base):

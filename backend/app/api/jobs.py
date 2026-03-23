@@ -271,6 +271,7 @@ async def delete_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     if job.status == JobStatus.RUNNING:
         raise HTTPException(status_code=409, detail="Cannot delete a running job — cancel it first")
     await db.delete(job)
+    await db.flush()
 
 
 class BulkDeleteRequest(PydanticBaseModel):
@@ -306,6 +307,9 @@ async def bulk_delete_jobs(
             continue
         await db.delete(job)
         deleted += 1
+
+    if deleted > 0:
+        await db.flush()
 
     return {"deleted": deleted, "skipped": skipped}
 

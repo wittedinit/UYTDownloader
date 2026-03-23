@@ -168,6 +168,7 @@ async def delete_subscription(sub_id: uuid.UUID, db: AsyncSession = Depends(get_
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
     await db.delete(sub)
+    await db.flush()
 
 
 @router.post("/{sub_id}/check", status_code=202)
