@@ -1,4 +1,17 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+function resolveApiBase(): string {
+  if (typeof window !== "undefined") {
+    // OrbStack local dev: route to backend container via .orb.local DNS
+    if (window.location.hostname.endsWith(".orb.local")) {
+      return "http://uyt-backend-1.orb.local:8000";
+    }
+    // Production/Unraid: backend on same host, port 8000
+    // Works with IP, hostname, or domain — just swap the port
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+}
+
+const API_BASE = resolveApiBase();
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

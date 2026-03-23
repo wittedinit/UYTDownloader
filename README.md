@@ -62,6 +62,9 @@ docker compose up -d
 - Backend API: http://localhost:8000
 - Health check: http://localhost:8000/health
 
+> **OrbStack users**: If `localhost:3000` doesn't work, use the container DNS:
+> `http://uyt-frontend-1.orb.local:3000` and `http://uyt-backend-1.orb.local:8000`
+
 ### With GPU (NVIDIA)
 
 ```bash
