@@ -344,36 +344,87 @@ export default function Home() {
           {/* Entries card */}
           <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl overflow-hidden mb-6">
             <div className="px-5 py-3 border-b border-[var(--card-border)] flex items-center justify-between">
-              <button onClick={toggleAll} className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-                {selected.size === entries.length ? "Deselect All" : "Select All"}
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={toggleAll} className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+                  {selected.size === entries.length ? "Deselect All" : "Select All"}
+                </button>
+                {selected.size >= 2 && (
+                  <span className="text-xs text-[var(--muted)] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded">
+                    Drag to reorder for merge
+                  </span>
+                )}
+              </div>
               <span className="text-sm text-[var(--muted)]">{selected.size} of {entries.length} selected</span>
             </div>
-            <div className="max-h-[400px] overflow-y-auto divide-y divide-[var(--card-border)]">
-              {entries.map((entry) => (
-                <label
+            <div className="max-h-[500px] overflow-y-auto">
+              {entries.map((entry, index) => (
+                <div
                   key={entry.id}
-                  className={`flex items-center gap-4 px-5 py-3 cursor-pointer transition-colors ${
+                  draggable
+                  onDragStart={(e) => { e.dataTransfer.setData("text/plain", String(index)); e.currentTarget.classList.add("opacity-50"); }}
+                  onDragEnd={(e) => { e.currentTarget.classList.remove("opacity-50"); }}
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-t-2", "border-t-indigo-500"); }}
+                  onDragLeave={(e) => { e.currentTarget.classList.remove("border-t-2", "border-t-indigo-500"); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("border-t-2", "border-t-indigo-500");
+                    const fromIdx = parseInt(e.dataTransfer.getData("text/plain"));
+                    const toIdx = index;
+                    if (fromIdx !== toIdx) {
+                      const newEntries = [...entries];
+                      const [moved] = newEntries.splice(fromIdx, 1);
+                      newEntries.splice(toIdx, 0, moved);
+                      setEntries(newEntries);
+                    }
+                  }}
+                  className={`flex items-start gap-4 px-5 py-3.5 cursor-grab active:cursor-grabbing transition-colors border-b border-[var(--card-border)] last:border-b-0 ${
                     selected.has(entry.id) ? "bg-indigo-500/5" : "hover:bg-[var(--background)]"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(entry.id)}
-                    onChange={() => toggleEntry(entry.id)}
-                    className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500"
-                  />
-                  {entry.thumbnail_url && (
-                    <img src={entry.thumbnail_url} alt="" className="w-24 h-14 rounded-md object-cover flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{entry.title}</p>
-                    <p className="text-xs text-[var(--muted)] mt-0.5">
-                      {formatDuration(entry.duration)}
-                      {entry.upload_date && ` \u00b7 ${entry.upload_date}`}
-                    </p>
+                  {/* Drag handle + checkbox */}
+                  <div className="flex items-center gap-2 pt-1 flex-shrink-0">
+                    <svg className="w-4 h-4 text-[var(--muted)] opacity-40" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M7 2a2 2 0 10.001 4.001A2 2 0 007 2zm0 6a2 2 0 10.001 4.001A2 2 0 007 8zm0 6a2 2 0 10.001 4.001A2 2 0 007 14zm6-8a2 2 0 10-.001-4.001A2 2 0 0013 6zm0 2a2 2 0 10.001 4.001A2 2 0 0013 8zm0 6a2 2 0 10.001 4.001A2 2 0 0013 14z" />
+                    </svg>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(entry.id)}
+                      onChange={() => toggleEntry(entry.id)}
+                      className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500"
+                    />
                   </div>
-                </label>
+
+                  {/* Thumbnail */}
+                  {entry.thumbnail_url && (
+                    <img src={entry.thumbnail_url} alt="" className="w-28 h-16 rounded-lg object-cover flex-shrink-0" />
+                  )}
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate mb-2">{entry.title}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {source?.uploader && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-cyan-300 border border-cyan-500/20">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                          {source.uploader}
+                        </span>
+                      )}
+                      {entry.upload_date && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-violet-600/20 to-purple-600/20 text-purple-300 border border-purple-500/20">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                          {entry.upload_date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-emerald-600/20 to-green-600/20 text-emerald-300 border border-emerald-500/20">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        {formatDuration(entry.duration)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Position number */}
+                  <span className="text-xs text-[var(--muted)] opacity-40 font-mono pt-1 flex-shrink-0">#{index + 1}</span>
+                </div>
               ))}
             </div>
           </div>
