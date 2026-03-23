@@ -31,6 +31,8 @@ export default function Home() {
   const [sponsorblock, setSponsorblock] = useState((saved?.sponsorblock as string) || "keep");
   const [embedSubs, setEmbedSubs] = useState((saved?.embedSubs as boolean) || false);
   const [normalizeAudio, setNormalizeAudio] = useState((saved?.normalizeAudio as boolean) || false);
+  const [outputFormat, setOutputFormat] = useState((saved?.outputFormat as string) || "original");
+  const [videoBitrate, setVideoBitrate] = useState((saved?.videoBitrate as string) || "auto");
 
   // Persist state to sessionStorage on changes
   useEffect(() => {
@@ -39,8 +41,9 @@ export default function Home() {
       url, phase, error, source, entries,
       selected: Array.from(selected),
       formatMode, quality, sponsorblock, embedSubs, normalizeAudio,
+      outputFormat, videoBitrate,
     });
-  }, [url, phase, error, source, entries, selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio]);
+  }, [url, phase, error, source, entries, selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio, outputFormat, videoBitrate]);
 
   const handleProbe = useCallback(async () => {
     if (!url.trim()) return;
@@ -213,10 +216,12 @@ export default function Home() {
           {/* Options card */}
           <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-5 mb-6">
             <h3 className="text-xs font-medium text-[var(--muted)] mb-4 uppercase tracking-wider">Download Options</h3>
+
+            {/* Row 1: Stream type + Quality + SponsorBlock */}
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-xs text-[var(--muted)] mb-1.5">Output</label>
-                <select value={formatMode} onChange={(e) => { setFormatMode(e.target.value); setQuality("best"); }}
+                <label className="block text-xs text-[var(--muted)] mb-1.5">Stream</label>
+                <select value={formatMode} onChange={(e) => { setFormatMode(e.target.value); setQuality("best"); setOutputFormat("original"); setVideoBitrate("auto"); }}
                   className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   <option value="video_audio">Video + Audio</option>
                   <option value="audio_only">Audio Only</option>
@@ -225,26 +230,26 @@ export default function Home() {
               </div>
               <div>
                 <label className="block text-xs text-[var(--muted)] mb-1.5">
-                  {formatMode === "audio_only" ? "Audio Quality" : "Quality"}
+                  {formatMode === "audio_only" ? "Audio Quality" : "Resolution"}
                 </label>
                 <select value={quality} onChange={(e) => setQuality(e.target.value)}
                   className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   {formatMode === "audio_only" ? (
                     <>
                       <option value="best">Best Available</option>
-                      <option value="audio_320k">320 kbps</option>
-                      <option value="audio_256k">256 kbps</option>
-                      <option value="audio_192k">192 kbps</option>
-                      <option value="audio_128k">128 kbps</option>
-                      <option value="audio_64k">64 kbps</option>
+                      <option value="audio_320k">320 kbps (Best Quality)</option>
+                      <option value="audio_256k">256 kbps (High)</option>
+                      <option value="audio_192k">192 kbps (Recommended)</option>
+                      <option value="audio_128k">128 kbps (Good)</option>
+                      <option value="audio_64k">64 kbps (Smallest Size)</option>
                     </>
                   ) : (
                     <>
                       <option value="best">Best Available</option>
-                      <option value="2160p">2160p (4K)</option>
-                      <option value="1080p">1080p</option>
-                      <option value="720p">720p</option>
-                      <option value="480p">480p</option>
+                      <option value="2160p">2160p / 4K (Best Quality)</option>
+                      <option value="1080p">1080p (Recommended)</option>
+                      <option value="720p">720p (Balanced)</option>
+                      <option value="480p">480p (Smallest Size)</option>
                     </>
                   )}
                 </select>
@@ -259,6 +264,69 @@ export default function Home() {
                 </select>
               </div>
             </div>
+
+            {/* Row 2: Output format + Bitrate (video modes only) */}
+            {formatMode !== "audio_only" && (
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs text-[var(--muted)] mb-1.5">Output Format</label>
+                  <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="original">Original (No Re-encode)</option>
+                    <option value="mp4_h264">MP4 / H.264 (Recommended)</option>
+                    <option value="mp4_h265">MP4 / H.265 (Smaller Size)</option>
+                    <option value="mkv_h264">MKV / H.264</option>
+                    <option value="webm_vp9">WebM / VP9</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--muted)] mb-1.5">Video Bitrate</label>
+                  <select value={videoBitrate} onChange={(e) => setVideoBitrate(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    disabled={outputFormat === "original"}>
+                    <option value="auto">Auto (Match Source)</option>
+                    <option value="8000k">8,000 kbps (Best Quality)</option>
+                    <option value="5000k">5,000 kbps (Recommended for 1080p)</option>
+                    <option value="3000k">3,000 kbps (Good for 720p)</option>
+                    <option value="1500k">1,500 kbps (Balanced)</option>
+                    <option value="800k">800 kbps (Smallest Size)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Audio output format (audio-only mode) */}
+            {formatMode === "audio_only" && (
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs text-[var(--muted)] mb-1.5">Audio Format</label>
+                  <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="original">Original (No Re-encode)</option>
+                    <option value="mp3">MP3 (Most Compatible)</option>
+                    <option value="m4a_aac">M4A / AAC (Recommended)</option>
+                    <option value="opus">Opus (Best Quality/Size)</option>
+                    <option value="flac">FLAC (Lossless)</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  {outputFormat !== "original" && outputFormat !== "flac" && (
+                    <p className="text-xs text-[var(--muted)] pb-2">
+                      Bitrate controlled by the Audio Quality setting above
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Info banner when re-encoding */}
+            {outputFormat !== "original" && (
+              <div className="mb-4 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-400">
+                Re-encoding will be applied after download. This uses {formatMode === "audio_only" ? "CPU" : "GPU if available, otherwise CPU"} and takes additional time.
+              </div>
+            )}
+
+            {/* Row 3: Post-processing toggles */}
             <div className="flex gap-6">
               <label className="flex items-center gap-2 text-sm cursor-pointer text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">
                 <input type="checkbox" checked={embedSubs} onChange={(e) => setEmbedSubs(e.target.checked)}
@@ -342,7 +410,7 @@ export default function Home() {
                 }}
                 className="py-4 px-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold text-base hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg shadow-purple-900/20"
               >
-                Download &amp; Merge
+                {`Download ${selected.size} Items & Merge`}
               </button>
             )}
           </div>
