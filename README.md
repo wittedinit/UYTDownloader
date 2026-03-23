@@ -68,13 +68,9 @@ Open **http://your-server-ip:3000** in your browser.
 
 ### Unraid (Community Apps)
 
-UYTDownloader runs as a Docker Compose stack on Unraid. To deploy:
+Search for **UYTDownloader** in the Apps tab and click Install. Then configure:
 
-1. **Install Docker Compose Manager** plugin from Community Apps if not already installed
-
-2. **Create the stack** — add a new Compose stack with this repo's `docker-compose.yml`, or use the template below
-
-3. **Configure paths** — map the three volumes to your Unraid appdata/media shares:
+1. **Configure paths** — map the three volumes to your Unraid shares:
 
    | Container Path | Suggested Unraid Path | Purpose |
    |---------------|----------------------|---------|
@@ -82,18 +78,18 @@ UYTDownloader runs as a Docker Compose stack on Unraid. To deploy:
    | `/downloads` | `/mnt/user/data/media/youtube` | Completed files |
    | `/work` | `/mnt/user/appdata/uytdownloader/work` | Temp/in-progress |
 
-4. **Configure ports**:
+2. **Configure ports**:
 
    | Port | Default | Purpose |
    |------|---------|---------|
    | WebUI | `3000` | Frontend (access in browser) |
    | API | `8000` | Backend API |
 
-5. **Set PUID/PGID** — match your Unraid user (typically `PUID=99` `PGID=100` for `nobody:users`)
+3. **Set PUID/PGID** — match your Unraid user (typically `PUID=99` `PGID=100` for `nobody:users`)
 
-6. **Set timezone** — e.g., `TZ=Europe/London`
+4. **Set timezone** — e.g., `TZ=Europe/London`
 
-7. **GPU passthrough** (optional) — if you have an NVIDIA GPU passed through to Docker:
+5. **GPU passthrough** (optional) — if you have an NVIDIA GPU passed through to Docker:
    - Add `--runtime=nvidia` to the worker container
    - Set `NVIDIA_VISIBLE_DEVICES=all`
    - Or use the `docker-compose.gpu.yml` override
