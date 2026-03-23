@@ -77,6 +77,7 @@ export default function JobsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Jobs</h1>
         <div className="flex gap-3">
+          <a href="/library" className="text-sm text-blue-600 hover:underline">Library</a>
           <a href="/subscriptions" className="text-sm text-blue-600 hover:underline">Subscriptions</a>
           <a href="/" className="text-sm text-blue-600 hover:underline">New Download</a>
         </div>

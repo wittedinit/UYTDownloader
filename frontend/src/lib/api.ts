@@ -264,6 +264,26 @@ export async function updateSubscription(subId: string, updates: Record<string, 
   });
 }
 
+// ── Library ───────────────────────────────────────────────────────────
+
+export interface LibraryFile {
+  filename: string;
+  size_bytes: number;
+  modified_at: number;
+  download_url: string;
+  extension: string;
+}
+
+export async function listLibraryFiles(page = 1) {
+  return apiFetch<{ files: LibraryFile[]; total: number; page: number; per_page: number }>(
+    `/api/library?page=${page}&per_page=100`
+  );
+}
+
+export async function deleteLibraryFile(filename: string) {
+  return apiFetch<void>(`/api/library/${encodeURIComponent(filename)}`, { method: "DELETE" });
+}
+
 // ── Health ────────────────────────────────────────────────────────────
 
 export async function getHealth() {

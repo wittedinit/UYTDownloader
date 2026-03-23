@@ -175,6 +175,7 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
                 size_bytes=a.size_bytes,
                 duration=a.duration,
                 mime_type=a.mime_type,
+                download_url=f"/files/{a.filename}" if a.filename else None,
                 created_at=a.created_at,
             )
             for a in job.artifacts

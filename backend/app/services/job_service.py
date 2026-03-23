@@ -304,17 +304,49 @@ def _dispatch_next_stage(session: Session, job: Job):
 
 # ── Stage handlers ─────────────────────────────────────────────────────
 
+def _update_job_progress(job_id: uuid.UUID, progress_pct: float, speed_bps: int | None, eta_seconds: int | None):
+    """Write progress to DB. Called from yt-dlp progress hook."""
+    from sqlalchemy import create_engine, text
+    sync_url = settings.database_url.replace("+asyncpg", "+psycopg2")
+    engine = create_engine(sync_url, pool_pre_ping=True)
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE jobs SET progress_pct = :pct, speed_bps = :speed, eta_seconds = :eta WHERE id = :id"),
+            {"pct": progress_pct, "speed": speed_bps, "eta": eta_seconds, "id": str(job_id)},
+        )
+        conn.commit()
+    engine.dispose()
+
+
 def _get_wrapper(job: Job) -> YtdlpWrapper:
     req = job.request
     cookie = req.cookie_file if req else None
+    job_id = job.id
+    _last_update = [0.0]  # Track last update time to avoid DB spam
 
     def progress_hook(d: dict):
-        # We could update job progress here via DB, but for now just log
+        import time
         if d.get("status") == "downloading":
             total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
             downloaded = d.get("downloaded_bytes", 0)
+            speed = d.get("speed")
+            eta = d.get("eta")
+
             if total > 0:
-                logger.debug("Progress: %.1f%%", downloaded / total * 100)
+                pct = min(downloaded / total * 100, 99.0)
+                now = time.monotonic()
+                # Update DB at most every 2 seconds
+                if now - _last_update[0] >= 2.0:
+                    _last_update[0] = now
+                    try:
+                        _update_job_progress(
+                            job_id,
+                            round(pct, 1),
+                            int(speed) if speed else None,
+                            int(eta) if eta else None,
+                        )
+                    except Exception:
+                        pass  # Don't let progress updates kill the download
 
     return YtdlpWrapper(cookie_file=cookie, progress_callback=progress_hook)
 
