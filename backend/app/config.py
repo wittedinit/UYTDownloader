@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # Format snapshot expiry (seconds)
     format_snapshot_ttl: int = 14400  # 4 hours
 
+    # Storage management
+    retention: str = "forever"  # 1_day, 1_week, 1_month, 3_months, 6_months, 1_year, forever
+    disk_guard_pct: float = 10.0  # Minimum free disk space percentage
+    disk_guard_strategy: str = "oldest_first"  # oldest_first, newest_first, largest_first, smallest_first
+
     model_config = {"env_prefix": "UYT_", "env_file": ".env", "extra": "ignore"}
 
     @property

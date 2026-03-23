@@ -49,6 +49,7 @@ Source → Entry → FormatSnapshot
 
 - Docker + Docker Compose
 - (Optional) NVIDIA GPU with nvidia-docker for NVENC acceleration
+- (Optional) Apple Silicon / Intel Mac for Metal (VideoToolbox) acceleration
 
 ### Run
 
@@ -81,6 +82,9 @@ Environment variables (set in `.env` or docker-compose):
 | `UYT_FRONTEND_PORT` | `3000` | Frontend port |
 | `UYT_CONCURRENCY_MODE` | `balanced` | `safe` (1 job), `balanced` (3), `power` (6) |
 | `UYT_SPONSORBLOCK_DEFAULT` | `keep` | `keep`, `mark_chapters`, `remove` |
+| `UYT_RETENTION` | `forever` | Auto-delete: `1_day`, `1_week`, `1_month`, `3_months`, `6_months`, `1_year`, `forever` |
+| `UYT_DISK_GUARD_PCT` | `10` | Auto-cleanup when free disk space drops below this % |
+| `UYT_DISK_GUARD_STRATEGY` | `oldest_first` | Cleanup order: `oldest_first`, `newest_first`, `largest_first`, `smallest_first` |
 | `PUID` / `PGID` | `1000` | File ownership UID/GID |
 | `TZ` | `UTC` | Timezone |
 
@@ -152,6 +156,7 @@ curl http://localhost:8000/api/entries/{entry_id}
 | Preset | yt-dlp format spec |
 |--------|--------------------|
 | `best` | `bestvideo+bestaudio/best` |
+| `2160p` | `bestvideo[height<=2160]+bestaudio/best[height<=2160]` |
 | `1080p` | `bestvideo[height<=1080]+bestaudio/best[height<=1080]` |
 | `720p` | `bestvideo[height<=720]+bestaudio/best[height<=720]` |
 | `480p` | `bestvideo[height<=480]+bestaudio/best[height<=480]` |

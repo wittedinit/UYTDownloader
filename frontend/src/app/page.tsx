@@ -204,6 +204,7 @@ export default function Home() {
                 className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
               >
                 <option value="best">Best Available</option>
+                <option value="2160p">2160p (4K)</option>
                 <option value="1080p">1080p</option>
                 <option value="720p">720p</option>
                 <option value="480p">480p</option>

@@ -61,6 +61,29 @@ def check_all_subscriptions() -> dict:
     return {"checked": len(due)}
 
 
+@shared_task
+def run_storage_cleanup() -> dict:
+    """Periodic task: enforce retention policy and disk space guard."""
+    from app.config import settings
+    from app.services.storage_service import enforce_retention, enforce_disk_guard
+
+    results = {}
+
+    # Retention — read from env var, default to "forever"
+    import os
+    retention = os.environ.get("UYT_RETENTION", "forever")
+    if retention != "forever":
+        results["retention"] = enforce_retention(retention)
+
+    # Disk guard — read threshold from env var, default 10%
+    min_free = float(os.environ.get("UYT_DISK_GUARD_PCT", "10"))
+    strategy = os.environ.get("UYT_DISK_GUARD_STRATEGY", "oldest_first")
+    if min_free > 0:
+        results["disk_guard"] = enforce_disk_guard(min_free_pct=min_free, strategy=strategy)
+
+    return results
+
+
 @shared_task(bind=True, max_retries=1, default_retry_delay=30)
 def run_compilation(
     self,

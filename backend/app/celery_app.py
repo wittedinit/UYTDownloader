@@ -28,6 +28,10 @@ celery.config_from_object(
                 "task": "app.worker.tasks.check_all_subscriptions",
                 "schedule": 300.0,  # every 5 minutes
             },
+            "storage-cleanup": {
+                "task": "app.worker.tasks.run_storage_cleanup",
+                "schedule": 3600.0,  # every hour
+            },
         },
     }
 )
