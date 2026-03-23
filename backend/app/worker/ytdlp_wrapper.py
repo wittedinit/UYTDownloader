@@ -41,7 +41,12 @@ class YtdlpWrapper:
 
     def extract_info(self, url: str) -> dict[str, Any]:
         """Full metadata extraction without downloading. For single videos or playlists."""
-        opts = {**self._base_opts(), "extract_flat": False}
+        opts = {
+            **self._base_opts(),
+            "extract_flat": False,
+            "format": "best/bestvideo+bestaudio/bestvideo/bestaudio",
+            "ignore_no_formats_error": True,
+        }
         with YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
             if info is None:
