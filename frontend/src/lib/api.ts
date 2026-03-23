@@ -285,6 +285,43 @@ export async function deleteLibraryFile(filename: string) {
   return apiFetch<void>(`/api/library/${encodeURIComponent(filename)}`, { method: "DELETE" });
 }
 
+// ── Storage Management ────────────────────────────────────────────────
+
+export interface DiskUsage {
+  disk_total_gb: number;
+  disk_used_gb: number;
+  disk_free_gb: number;
+  disk_free_pct: number;
+  downloads_bytes: number;
+  downloads_gb: number;
+  downloads_file_count: number;
+}
+
+export async function getDiskUsage() {
+  return apiFetch<DiskUsage>("/api/storage/usage");
+}
+
+export async function getStoragePresets() {
+  return apiFetch<{
+    retention_presets: { key: string; label: string; is_forever: boolean }[];
+    cleanup_strategies: { key: string; description: string }[];
+  }>("/api/storage/presets");
+}
+
+export async function runRetention(retention: string, dryRun = false) {
+  return apiFetch<Record<string, unknown>>(
+    `/api/storage/retention?retention=${retention}&dry_run=${dryRun}`,
+    { method: "POST" }
+  );
+}
+
+export async function runDiskGuard(minFreePct: number, strategy: string, dryRun = false) {
+  return apiFetch<Record<string, unknown>>(
+    `/api/storage/disk-guard?min_free_pct=${minFreePct}&strategy=${strategy}&dry_run=${dryRun}`,
+    { method: "POST" }
+  );
+}
+
 // ── Health ────────────────────────────────────────────────────────────
 
 export async function getHealth() {

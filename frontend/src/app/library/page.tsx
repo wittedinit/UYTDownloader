@@ -82,10 +82,21 @@ export default function LibraryPage() {
             <div className="flex items-center gap-4">
               <span className="text-sm text-[var(--muted)]">{files.length} files &middot; {formatBytes(files.reduce((s, f) => s + f.size_bytes, 0))}</span>
               {selected.size > 0 && (
-                <button onClick={handleDownloadSelected}
-                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-green-700 transition-all">
-                  Download {selected.size} file{selected.size !== 1 ? "s" : ""}
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={handleDownloadSelected}
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-green-700 transition-all">
+                    Download {selected.size} file{selected.size !== 1 ? "s" : ""}
+                  </button>
+                  <button onClick={async () => {
+                    if (!confirm(`Delete ${selected.size} file${selected.size !== 1 ? "s" : ""}?`)) return;
+                    for (const f of selected) { try { await deleteLibraryFile(f); } catch {} }
+                    setSelected(new Set());
+                    fetchFiles();
+                  }}
+                    className="px-4 py-2 border border-red-500/30 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/10 transition-colors">
+                    Delete {selected.size} file{selected.size !== 1 ? "s" : ""}
+                  </button>
+                </div>
               )}
             </div>
           </div>
