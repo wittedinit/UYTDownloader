@@ -1,12 +1,14 @@
-"""Library API: browse and download completed artifacts."""
+"""Library API: browse, download, and merge completed artifacts."""
 
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from app.config import settings
 
@@ -76,3 +78,73 @@ async def delete_file(filename: str):
         raise HTTPException(status_code=404, detail="File not found")
 
     os.unlink(file_path)
+
+
+class MergeRequest(BaseModel):
+    filenames: list[str]
+    title: str = "Merged"
+    mode: str = "video_chapters"  # video_chapters | video_no_chapters | audio_chapters | audio_no_chapters
+    normalize_audio: bool = False
+
+
+@router.post("/merge")
+async def merge_files(req: MergeRequest):
+    """Merge multiple library files into one. Runs synchronously for simplicity."""
+    if len(req.filenames) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 files to merge")
+
+    output_dir = Path(settings.output_dir)
+    input_files = []
+
+    for fname in req.filenames:
+        if "/" in fname or "\\" in fname or ".." in fname:
+            raise HTTPException(status_code=400, detail=f"Invalid filename: {fname}")
+        fpath = output_dir / fname
+        if not fpath.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {fname}")
+
+        # Get duration via ffprobe
+        duration = None
+        try:
+            probe = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+                 "-of", "default=noprint_wrappers=1:nokey=1", str(fpath)],
+                capture_output=True, text=True, timeout=10,
+            )
+            if probe.stdout.strip():
+                duration = float(probe.stdout.strip())
+        except Exception:
+            pass
+
+        input_files.append({
+            "path": str(fpath),
+            "title": fpath.stem,
+            "duration": duration,
+        })
+
+    from app.services.compilation_service import build_compilation
+
+    safe_title = "".join(c if c.isalnum() or c in " ._-" else "_" for c in req.title)
+    is_audio = req.mode.startswith("audio_")
+    ext = ".m4a" if is_audio else ".mp4"
+    out_path = str(output_dir / f"{safe_title}{ext}")
+
+    # Handle name collisions
+    counter = 1
+    base = out_path
+    while os.path.exists(out_path):
+        stem, suffix = os.path.splitext(base)
+        out_path = f"{stem}_{counter}{suffix}"
+        counter += 1
+
+    result = build_compilation(input_files, out_path, req.mode, req.normalize_audio)
+
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    return {
+        "filename": os.path.basename(out_path),
+        "size_bytes": result.get("size_bytes", 0),
+        "chapters": result.get("chapters", 0),
+        "output_path": out_path,
+    }

@@ -276,6 +276,20 @@ export async function updateSubscription(subId: string, updates: Record<string, 
   });
 }
 
+// ── Compilations ──────────────────────────────────────────────────────
+
+export async function createCompilation(params: {
+  items: { entry_id: string; position: number }[];
+  mode?: string;
+  title?: string;
+  normalize_audio?: boolean;
+}) {
+  return apiFetch<{ job_id: string; status: string; item_count: number }>("/api/compilations", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
 // ── Library ───────────────────────────────────────────────────────────
 
 export interface LibraryFile {
@@ -294,6 +308,18 @@ export async function listLibraryFiles(page = 1) {
 
 export async function deleteLibraryFile(filename: string) {
   return apiFetch<void>(`/api/library/${encodeURIComponent(filename)}`, { method: "DELETE" });
+}
+
+export async function mergeLibraryFiles(params: {
+  filenames: string[];
+  title?: string;
+  mode?: string;
+  normalize_audio?: boolean;
+}) {
+  return apiFetch<{ filename: string; size_bytes: number; chapters: number }>("/api/library/merge", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
 }
 
 // ── Storage Management ────────────────────────────────────────────────

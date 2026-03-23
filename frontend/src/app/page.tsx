@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { submitProbe, pollProbe, createJobs, createSubscription, type Entry, type Source } from "@/lib/api";
+import { submitProbe, pollProbe, createJobs, createSubscription, createCompilation, type Entry, type Source } from "@/lib/api";
 
 type Phase = "input" | "probing" | "select" | "queued" | "error";
 
@@ -216,7 +216,7 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block text-xs text-[var(--muted)] mb-1.5">Output</label>
-                <select value={formatMode} onChange={(e) => setFormatMode(e.target.value)}
+                <select value={formatMode} onChange={(e) => { setFormatMode(e.target.value); setQuality("best"); }}
                   className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   <option value="video_audio">Video + Audio</option>
                   <option value="audio_only">Audio Only</option>
@@ -224,14 +224,29 @@ export default function Home() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-[var(--muted)] mb-1.5">Quality</label>
+                <label className="block text-xs text-[var(--muted)] mb-1.5">
+                  {formatMode === "audio_only" ? "Audio Quality" : "Quality"}
+                </label>
                 <select value={quality} onChange={(e) => setQuality(e.target.value)}
                   className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option value="best">Best Available</option>
-                  <option value="2160p">2160p (4K)</option>
-                  <option value="1080p">1080p</option>
-                  <option value="720p">720p</option>
-                  <option value="480p">480p</option>
+                  {formatMode === "audio_only" ? (
+                    <>
+                      <option value="best">Best Available</option>
+                      <option value="audio_320k">320 kbps</option>
+                      <option value="audio_256k">256 kbps</option>
+                      <option value="audio_192k">192 kbps</option>
+                      <option value="audio_128k">128 kbps</option>
+                      <option value="audio_64k">64 kbps</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="best">Best Available</option>
+                      <option value="2160p">2160p (4K)</option>
+                      <option value="1080p">1080p</option>
+                      <option value="720p">720p</option>
+                      <option value="480p">480p</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>
@@ -295,14 +310,42 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Download button */}
-          <button
-            onClick={handleDownload}
-            disabled={selected.size === 0}
-            className="w-full py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-semibold text-base hover:from-emerald-700 hover:to-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-900/20"
-          >
-            Download {selected.size} item{selected.size !== 1 ? "s" : ""}
-          </button>
+          {/* Download buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleDownload}
+              disabled={selected.size === 0}
+              className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-semibold text-base hover:from-emerald-700 hover:to-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-900/20"
+            >
+              Download {selected.size} item{selected.size !== 1 ? "s" : ""}
+            </button>
+            {selected.size >= 2 && (
+              <button
+                onClick={async () => {
+                  const selectedEntries = entries.filter((e) => selected.has(e.id));
+                  const title = source?.title
+                    ? `${source.title} (Merged)`
+                    : `Compilation ${new Date().toLocaleDateString()}`;
+                  const isAudio = formatMode === "audio_only";
+                  try {
+                    await createCompilation({
+                      items: selectedEntries.map((e, i) => ({ entry_id: e.id, position: i })),
+                      mode: isAudio ? "audio_chapters" : "video_chapters",
+                      title,
+                      normalize_audio: normalizeAudio,
+                    });
+                    setPhase("queued");
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Merge failed — entries must be downloaded first");
+                    setPhase("error");
+                  }
+                }}
+                className="py-4 px-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold text-base hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg shadow-purple-900/20"
+              >
+                Download &amp; Merge
+              </button>
+            )}
+          </div>
         </>
       )}
 

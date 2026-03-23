@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { listLibraryFiles, deleteLibraryFile, type LibraryFile } from "@/lib/api";
+import { listLibraryFiles, deleteLibraryFile, mergeLibraryFiles, type LibraryFile } from "@/lib/api";
 
 function resolveApiBase(): string {
   if (typeof window !== "undefined") {
@@ -15,6 +15,7 @@ export default function LibraryPage() {
   const [files, setFiles] = useState<LibraryFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [merging, setMerging] = useState(false);
   const apiBase = resolveApiBase();
 
   const fetchFiles = useCallback(async () => {
@@ -85,8 +86,32 @@ export default function LibraryPage() {
                 <div className="flex gap-2">
                   <button onClick={handleDownloadSelected}
                     className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-green-700 transition-all">
-                    Download {selected.size} file{selected.size !== 1 ? "s" : ""}
+                    Download {selected.size}
                   </button>
+                  {selected.size >= 2 && (
+                    <button
+                      disabled={merging}
+                      onClick={async () => {
+                        const title = prompt("Merged file name:", "Merged Compilation") || "Merged Compilation";
+                        const hasVideo = Array.from(selected).some((f) => f.endsWith(".mp4") || f.endsWith(".mkv") || f.endsWith(".webm"));
+                        setMerging(true);
+                        try {
+                          await mergeLibraryFiles({
+                            filenames: Array.from(selected),
+                            title,
+                            mode: hasVideo ? "video_chapters" : "audio_chapters",
+                          });
+                          setSelected(new Set());
+                          fetchFiles();
+                          alert("Merge complete!");
+                        } catch (e) {
+                          alert(e instanceof Error ? e.message : "Merge failed");
+                        } finally { setMerging(false); }
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-sm font-medium hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 transition-all">
+                      {merging ? "Merging..." : `Merge ${selected.size}`}
+                    </button>
+                  )}
                   <button onClick={async () => {
                     if (!confirm(`Delete ${selected.size} file${selected.size !== 1 ? "s" : ""}?`)) return;
                     for (const f of selected) { try { await deleteLibraryFile(f); } catch {} }

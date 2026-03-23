@@ -39,6 +39,12 @@ QUALITY_MAP = {
     "720p": "bestvideo[height<=720]+bestaudio/best[height<=720]",
     "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
     "audio_only": "bestaudio/best",
+    # Audio bitrate presets
+    "audio_320k": "bestaudio[abr<=320]/bestaudio/best",
+    "audio_256k": "bestaudio[abr<=256]/bestaudio/best",
+    "audio_192k": "bestaudio[abr<=192]/bestaudio/best",
+    "audio_128k": "bestaudio[abr<=128]/bestaudio/best",
+    "audio_64k": "bestaudio[abr<=64]/bestaudio/best",
 }
 
 CONTAINER_MAP = {
