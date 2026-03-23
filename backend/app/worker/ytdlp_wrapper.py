@@ -71,10 +71,19 @@ class YtdlpWrapper:
             "overwrites": False,
             "continuedl": True,
         }
+        _downloaded_path: list[str] = []
+
+        def _postprocessor_hook(d: dict) -> None:
+            if d.get("status") == "finished" and d.get("filename"):
+                _downloaded_path.append(d["filename"])
+
+        opts.setdefault("postprocessor_hooks", []).append(_postprocessor_hook)
+
         with YoutubeDL(opts) as ydl:
-            ydl.download([url])
-            # Get the actual filename
-            info = ydl.extract_info(url, download=False)
-            if info is None:
-                raise DownloadError(f"Could not determine output path for {url}")
-            return ydl.prepare_filename(info)
+            # extract_info with download=True does both extraction and download in one call
+            info = ydl.extract_info(url, download=True)
+            if _downloaded_path:
+                return _downloaded_path[-1]
+            if info is not None:
+                return ydl.prepare_filename(info)
+            raise DownloadError(f"Could not determine output path for {url}")

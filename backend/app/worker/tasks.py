@@ -69,17 +69,14 @@ def run_storage_cleanup() -> dict:
 
     results = {}
 
-    # Retention — read from env var, default to "forever"
-    import os
-    retention = os.environ.get("UYT_RETENTION", "forever")
-    if retention != "forever":
-        results["retention"] = enforce_retention(retention)
+    if settings.retention != "forever":
+        results["retention"] = enforce_retention(settings.retention)
 
-    # Disk guard — read threshold from env var, default 10%
-    min_free = float(os.environ.get("UYT_DISK_GUARD_PCT", "10"))
-    strategy = os.environ.get("UYT_DISK_GUARD_STRATEGY", "oldest_first")
-    if min_free > 0:
-        results["disk_guard"] = enforce_disk_guard(min_free_pct=min_free, strategy=strategy)
+    if settings.disk_guard_pct > 0:
+        results["disk_guard"] = enforce_disk_guard(
+            min_free_pct=settings.disk_guard_pct,
+            strategy=settings.disk_guard_strategy,
+        )
 
     return results
 
@@ -172,6 +169,11 @@ def run_compilation(
 
     except Exception as e:
         logger.error("Compilation failed for job %s: %s", job_id, e, exc_info=True)
+        try:
+            session.rollback()
+            session.close()
+        except Exception:
+            pass
         return {"status": "failed", "error": str(e)}
 
 

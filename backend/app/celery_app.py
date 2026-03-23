@@ -22,6 +22,7 @@ celery.config_from_object(
             "app.worker.tasks.check_subscription": {"queue": "probe"},
             "app.worker.tasks.check_all_subscriptions": {"queue": "probe"},
             "app.worker.tasks.run_compilation": {"queue": "download"},
+            "app.worker.tasks.run_storage_cleanup": {"queue": "probe"},
         },
         "beat_schedule": {
             "check-subscriptions": {

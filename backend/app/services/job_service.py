@@ -79,13 +79,8 @@ def _get_max_height(quality: str) -> int | None:
 # ── Sync DB session ────────────────────────────────────────────────────
 
 def _get_sync_session() -> Session:
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    sync_url = settings.database_url.replace("+asyncpg", "+psycopg2")
-    engine = create_engine(sync_url, pool_pre_ping=True)
-    factory = sessionmaker(engine, expire_on_commit=False)
-    return factory()
+    from app.sync_db import get_sync_session
+    return get_sync_session()
 
 
 # ── Job creation ───────────────────────────────────────────────────────
@@ -147,7 +142,15 @@ def create_jobs(
         container = CONTAINER_MAP.get(format_mode, "mp4")
         max_height = _get_max_height(quality)
         cookie_path = settings.cookie_path
-        out_dir = output_dir or str(settings.output_dir)
+        # Validate output_dir stays within configured output directory
+        out_dir = str(settings.output_dir)
+        if output_dir:
+            resolved = Path(output_dir).resolve()
+            allowed = Path(settings.output_dir).resolve()
+            if str(resolved).startswith(str(allowed)):
+                out_dir = str(resolved)
+            else:
+                logger.warning("Rejected output_dir %s — not within %s", output_dir, allowed)
 
         created_jobs = []
         for entry_id in entry_ids:
@@ -313,16 +316,14 @@ def _dispatch_next_stage(session: Session, job: Job):
 
 def _update_job_progress(job_id: uuid.UUID, progress_pct: float, speed_bps: int | None, eta_seconds: int | None):
     """Write progress to DB. Called from yt-dlp progress hook."""
-    from sqlalchemy import create_engine, text
-    sync_url = settings.database_url.replace("+asyncpg", "+psycopg2")
-    engine = create_engine(sync_url, pool_pre_ping=True)
-    with engine.connect() as conn:
+    from sqlalchemy import text
+    from app.sync_db import sync_engine
+    with sync_engine.connect() as conn:
         conn.execute(
             text("UPDATE jobs SET progress_pct = :pct, speed_bps = :speed, eta_seconds = :eta WHERE id = :id"),
             {"pct": progress_pct, "speed": speed_bps, "eta": eta_seconds, "id": str(job_id)},
         )
         conn.commit()
-    engine.dispose()
 
 
 def _get_wrapper(job: Job) -> YtdlpWrapper:

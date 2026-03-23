@@ -21,14 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 def _get_sync_session() -> Session:
-    """Create a synchronous DB session for use in Celery workers."""
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    sync_url = settings.database_url.replace("+asyncpg", "+psycopg2")
-    engine = create_engine(sync_url, pool_pre_ping=True)
-    factory = sessionmaker(engine, expire_on_commit=False)
-    return factory()
+    """Get a synchronous DB session for use in Celery workers."""
+    from app.sync_db import get_sync_session
+    return get_sync_session()
 
 
 def _classify_source_type(info: dict) -> SourceType:

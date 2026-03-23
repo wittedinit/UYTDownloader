@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel
 
@@ -25,6 +24,30 @@ class JobStageOut(BaseModel):
     started_at: datetime | None
     finished_at: datetime | None
     error_message: str | None
+
+    model_config = {"from_attributes": True}
+
+
+class JobRequestOut(BaseModel):
+    format_mode: str
+    format_spec: str
+    container: str
+    max_height: int | None
+    sponsorblock_action: str
+    output_dir: str | None
+
+    model_config = {"from_attributes": True}
+
+
+class ArtifactOut(BaseModel):
+    id: uuid.UUID
+    kind: str
+    filename: str
+    size_bytes: int | None
+    duration: float | None
+    mime_type: str | None
+    download_url: str | None = None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -54,30 +77,6 @@ class JobDetail(JobOut):
     stages: list[JobStageOut] = []
     artifacts: list[ArtifactOut] = []
     request: JobRequestOut | None = None
-
-
-class JobRequestOut(BaseModel):
-    format_mode: str
-    format_spec: str
-    container: str
-    max_height: int | None
-    sponsorblock_action: str
-    output_dir: str | None
-
-    model_config = {"from_attributes": True}
-
-
-class ArtifactOut(BaseModel):
-    id: uuid.UUID
-    kind: str
-    filename: str
-    size_bytes: int | None
-    duration: float | None
-    mime_type: str | None
-    download_url: str | None = None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class JobListResponse(BaseModel):

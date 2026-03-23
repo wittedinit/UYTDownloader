@@ -18,13 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 def _get_sync_session() -> Session:
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    sync_url = settings.database_url.replace("+asyncpg", "+psycopg2")
-    engine = create_engine(sync_url, pool_pre_ping=True)
-    factory = sessionmaker(engine, expire_on_commit=False)
-    return factory()
+    from app.sync_db import get_sync_session
+    return get_sync_session()
 
 
 def check_subscription(subscription_id: str) -> dict:
