@@ -17,36 +17,53 @@ function loadSession(): Record<string, unknown> | null {
 }
 
 export default function Home() {
-  // Lazy initializer to avoid SSR hydration mismatch
-  const [saved] = useState<Record<string, unknown> | null>(() =>
-    typeof window !== "undefined" ? loadSession() : null
-  );
+  const [url, setUrl] = useState("");
+  const [phase, setPhase] = useState<Phase>("input");
+  const [error, setError] = useState("");
+  const [source, setSource] = useState<Source | null>(null);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const [url, setUrl] = useState(() => (saved?.url as string) ?? "");
-  const [phase, setPhase] = useState<Phase>(() => (saved?.phase as Phase) ?? "input");
-  const [error, setError] = useState(() => (saved?.error as string) ?? "");
-  const [source, setSource] = useState<Source | null>(() => (saved?.source as Source) ?? null);
-  const [entries, setEntries] = useState<Entry[]>(() => (saved?.entries as Entry[]) ?? []);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set((saved?.selected as string[]) ?? []));
+  const [formatMode, setFormatMode] = useState("video_audio");
+  const [quality, setQuality] = useState("best");
+  const [sponsorblock, setSponsorblock] = useState("keep");
+  const [embedSubs, setEmbedSubs] = useState(false);
+  const [normalizeAudio, setNormalizeAudio] = useState(false);
+  const [outputFormat, setOutputFormat] = useState("original");
+  const [videoBitrate, setVideoBitrate] = useState("auto");
+  const [hydrated, setHydrated] = useState(false);
 
-  const [formatMode, setFormatMode] = useState(() => (saved?.formatMode as string) ?? "video_audio");
-  const [quality, setQuality] = useState(() => (saved?.quality as string) ?? "best");
-  const [sponsorblock, setSponsorblock] = useState(() => (saved?.sponsorblock as string) ?? "keep");
-  const [embedSubs, setEmbedSubs] = useState(() => (saved?.embedSubs as boolean) ?? false);
-  const [normalizeAudio, setNormalizeAudio] = useState(() => (saved?.normalizeAudio as boolean) ?? false);
-  const [outputFormat, setOutputFormat] = useState(() => (saved?.outputFormat as string) ?? "original");
-  const [videoBitrate, setVideoBitrate] = useState(() => (saved?.videoBitrate as string) ?? "auto");
-
-  // Persist state to sessionStorage on changes
+  // Restore state from sessionStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
-    if (phase === "probing") return; // Don't save mid-probe
+    const saved = loadSession();
+    if (saved) {
+      if (saved.url) setUrl(saved.url as string);
+      if (saved.phase && saved.phase !== "probing") setPhase(saved.phase as Phase);
+      if (saved.error) setError(saved.error as string);
+      if (saved.source) setSource(saved.source as Source);
+      if (saved.entries) setEntries(saved.entries as Entry[]);
+      if (saved.selected) setSelected(new Set(saved.selected as string[]));
+      if (saved.formatMode) setFormatMode(saved.formatMode as string);
+      if (saved.quality) setQuality(saved.quality as string);
+      if (saved.sponsorblock) setSponsorblock(saved.sponsorblock as string);
+      if (saved.embedSubs != null) setEmbedSubs(saved.embedSubs as boolean);
+      if (saved.normalizeAudio != null) setNormalizeAudio(saved.normalizeAudio as boolean);
+      if (saved.outputFormat) setOutputFormat(saved.outputFormat as string);
+      if (saved.videoBitrate) setVideoBitrate(saved.videoBitrate as string);
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist state to sessionStorage on changes (only after hydration)
+  useEffect(() => {
+    if (!hydrated || phase === "probing") return;
     saveSession({
       url, phase, error, source, entries,
       selected: Array.from(selected),
       formatMode, quality, sponsorblock, embedSubs, normalizeAudio,
       outputFormat, videoBitrate,
     });
-  }, [url, phase, error, source, entries, selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio, outputFormat, videoBitrate]);
+  }, [hydrated, url, phase, error, source, entries, selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio, outputFormat, videoBitrate]);
 
   const handleProbe = useCallback(async () => {
     if (!url.trim()) return;
