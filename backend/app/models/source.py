@@ -24,3 +24,6 @@ class Source(TimestampMixin, Base):
     source_entries: Mapped[list["SourceEntry"]] = relationship(  # noqa: F821
         back_populates="source", cascade="all, delete-orphan"
     )
+    subscriptions: Mapped[list["Subscription"]] = relationship(  # noqa: F821
+        back_populates="source", cascade="all, delete-orphan"
+    )

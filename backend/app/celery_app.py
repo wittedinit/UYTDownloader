@@ -19,6 +19,14 @@ celery.config_from_object(
         "task_routes": {
             "app.worker.tasks.run_probe": {"queue": "probe"},
             "app.worker.tasks.run_stage": {"queue": "download"},
+            "app.worker.tasks.check_subscription": {"queue": "probe"},
+            "app.worker.tasks.check_all_subscriptions": {"queue": "probe"},
+        },
+        "beat_schedule": {
+            "check-subscriptions": {
+                "task": "app.worker.tasks.check_all_subscriptions",
+                "schedule": 300.0,  # every 5 minutes
+            },
         },
     }
 )

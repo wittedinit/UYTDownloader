@@ -34,6 +34,33 @@ def run_probe(self, url: str, source_id: str | None = None) -> dict:
         return {"status": "failed", "error": str(e)}
 
 
+@shared_task(bind=True, max_retries=1, default_retry_delay=60)
+def check_subscription(self, subscription_id: str) -> dict:
+    """Check a subscription for new content and auto-download if enabled."""
+    from app.services.subscription_service import check_subscription as svc_check
+
+    try:
+        return svc_check(subscription_id)
+    except Exception as e:
+        logger.error("Subscription check failed for %s: %s", subscription_id, e, exc_info=True)
+        error_str = str(e).lower()
+        retryable = any(kw in error_str for kw in ["429", "timeout", "connection"])
+        if retryable and self.request.retries < self.max_retries:
+            raise self.retry(exc=e)
+        return {"status": "failed", "error": str(e)}
+
+
+@shared_task
+def check_all_subscriptions() -> dict:
+    """Periodic task: check all due subscriptions."""
+    from app.services.subscription_service import get_due_subscriptions
+
+    due = get_due_subscriptions()
+    for sub_id in due:
+        check_subscription.delay(sub_id)
+    return {"checked": len(due)}
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def run_stage(self, job_id: str, stage_id: str) -> dict:
     """Execute one stage of a job. Triggers next stages on completion."""

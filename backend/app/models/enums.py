@@ -37,6 +37,8 @@ class StageType(str, enum.Enum):
     DOWNLOAD_AUDIO = "download_audio"
     MERGE = "merge"
     SPONSORBLOCK = "sponsorblock"
+    EMBED_SUBTITLES = "embed_subtitles"
+    NORMALIZE_AUDIO = "normalize_audio"
     FINALIZE = "finalize"
 
 
@@ -52,6 +54,8 @@ class ArtifactKind(str, enum.Enum):
     AUDIO_STREAM = "audio_stream"
     MERGED = "merged"
     CLEANED = "cleaned"
+    SUBTITLED = "subtitled"
+    NORMALIZED = "normalized"
 
 
 class SponsorBlockAction(str, enum.Enum):
@@ -64,3 +68,12 @@ class ConcurrencyMode(str, enum.Enum):
     SAFE = "safe"
     BALANCED = "balanced"
     POWER = "power"
+
+
+class SubscriptionFilterType(str, enum.Enum):
+    IGNORE_SHORTS = "ignore_shorts"
+    MIN_DURATION = "min_duration"
+    MAX_DURATION = "max_duration"
+    KEYWORD_INCLUDE = "keyword_include"
+    KEYWORD_EXCLUDE = "keyword_exclude"
+    IGNORE_LIVE = "ignore_live"

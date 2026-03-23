@@ -9,6 +9,7 @@ from app.models.enums import (
     SourceType,
     StageStatus,
     StageType,
+    SubscriptionFilterType,
 )
 from app.models.source import Source
 from app.models.entry import Entry
@@ -17,6 +18,7 @@ from app.models.format_snapshot import FormatSnapshot
 from app.models.job import Job, JobRequest, JobStage
 from app.models.artifact import Artifact
 from app.models.archive import ArchiveRecord
+from app.models.subscription import Subscription, SubscriptionFilter
 
 __all__ = [
     "Base",
@@ -29,6 +31,7 @@ __all__ = [
     "SourceType",
     "StageStatus",
     "StageType",
+    "SubscriptionFilterType",
     "Source",
     "Entry",
     "SourceEntry",
@@ -38,4 +41,6 @@ __all__ = [
     "JobStage",
     "Artifact",
     "ArchiveRecord",
+    "Subscription",
+    "SubscriptionFilter",
 ]

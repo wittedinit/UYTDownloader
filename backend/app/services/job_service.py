@@ -83,7 +83,12 @@ def _get_sync_session() -> Session:
 
 # ── Job creation ───────────────────────────────────────────────────────
 
-def _build_stages(format_mode: str, sponsorblock: str) -> list[dict]:
+def _build_stages(
+    format_mode: str,
+    sponsorblock: str,
+    embed_subs: bool = False,
+    normalize: bool = False,
+) -> list[dict]:
     """Return ordered list of stage definitions for a download job."""
     stages = [
         {"type": StageType.REVALIDATE_FORMATS, "order": 0},
@@ -102,6 +107,14 @@ def _build_stages(format_mode: str, sponsorblock: str) -> list[dict]:
         next_order = max(s["order"] for s in stages) + 1
         stages.append({"type": StageType.SPONSORBLOCK, "order": next_order})
 
+    if embed_subs:
+        next_order = max(s["order"] for s in stages) + 1
+        stages.append({"type": StageType.EMBED_SUBTITLES, "order": next_order})
+
+    if normalize:
+        next_order = max(s["order"] for s in stages) + 1
+        stages.append({"type": StageType.NORMALIZE_AUDIO, "order": next_order})
+
     final_order = max(s["order"] for s in stages) + 1
     stages.append({"type": StageType.FINALIZE, "order": final_order})
 
@@ -114,6 +127,8 @@ def create_jobs(
     quality: str = "best",
     sponsorblock_action: str = "keep",
     output_dir: str | None = None,
+    embed_subtitles: bool = False,
+    normalize_audio: bool = False,
 ) -> list[dict]:
     """
     Create download jobs for the given entries.
@@ -172,7 +187,7 @@ def create_jobs(
             session.add(req)
 
             # Create stages
-            stage_defs = _build_stages(format_mode, sponsorblock_action)
+            stage_defs = _build_stages(format_mode, sponsorblock_action, embed_subtitles, normalize_audio)
             for sd in stage_defs:
                 stage = JobStage(job_id=job.id, type=sd["type"], order=sd["order"])
                 session.add(stage)
@@ -229,6 +244,8 @@ def execute_stage(job_id: str, stage_id: str, task=None) -> dict:
             StageType.DOWNLOAD_AUDIO: _handle_download_audio,
             StageType.MERGE: _handle_merge,
             StageType.SPONSORBLOCK: _handle_sponsorblock,
+            StageType.EMBED_SUBTITLES: _handle_embed_subtitles,
+            StageType.NORMALIZE_AUDIO: _handle_normalize_audio,
             StageType.FINALIZE: _handle_finalize,
         }
         handler = handlers.get(stage.type)
@@ -501,6 +518,89 @@ def _handle_sponsorblock(session: Session, job: Job, stage: JobStage, task) -> d
     return result
 
 
+def _handle_embed_subtitles(session: Session, job: Job, stage: JobStage, task) -> dict:
+    """Embed subtitles into the latest artifact."""
+    from app.services.postprocess_service import embed_subtitles
+
+    entry = job.entry
+    if not entry:
+        raise ValueError("Job has no entry")
+
+    # Get subtitle data from format snapshot
+    from app.models.format_snapshot import FormatSnapshot
+    snap = session.execute(
+        select(FormatSnapshot)
+        .where(FormatSnapshot.entry_id == entry.id)
+        .order_by(FormatSnapshot.fetched_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+
+    subtitles_json = snap.subtitles_json if snap else None
+    if not subtitles_json:
+        return {"embedded": False, "reason": "no subtitle data"}
+
+    # Find latest artifact
+    source_artifact = _find_latest_artifact(session, job)
+    if not source_artifact:
+        raise ValueError("No source artifact for subtitle embedding")
+
+    result = embed_subtitles(source_artifact.path, subtitles_json)
+
+    if result.get("embedded") and result.get("output_path"):
+        artifact = Artifact(
+            job_id=job.id,
+            kind=ArtifactKind.SUBTITLED,
+            path=result["output_path"],
+            filename=os.path.basename(result["output_path"]),
+            size_bytes=os.path.getsize(result["output_path"]) if os.path.exists(result["output_path"]) else None,
+            produced_by_stage_id=stage.id,
+            parent_artifact_id=source_artifact.id,
+        )
+        session.add(artifact)
+        session.flush()
+        result["artifact_id"] = str(artifact.id)
+
+    return result
+
+
+def _handle_normalize_audio(session: Session, job: Job, stage: JobStage, task) -> dict:
+    """Normalize audio loudness on the latest artifact."""
+    from app.services.postprocess_service import normalize_audio
+
+    source_artifact = _find_latest_artifact(session, job)
+    if not source_artifact:
+        raise ValueError("No source artifact for audio normalization")
+
+    result = normalize_audio(source_artifact.path)
+
+    if result.get("normalized") and result.get("output_path"):
+        artifact = Artifact(
+            job_id=job.id,
+            kind=ArtifactKind.NORMALIZED,
+            path=result["output_path"],
+            filename=os.path.basename(result["output_path"]),
+            size_bytes=result.get("size_bytes"),
+            produced_by_stage_id=stage.id,
+            parent_artifact_id=source_artifact.id,
+        )
+        session.add(artifact)
+        session.flush()
+        result["artifact_id"] = str(artifact.id)
+
+    return result
+
+
+def _find_latest_artifact(session: Session, job: Job) -> Artifact | None:
+    """Find the most processed artifact for a job."""
+    for kind in [ArtifactKind.NORMALIZED, ArtifactKind.SUBTITLED, ArtifactKind.CLEANED, ArtifactKind.MERGED, ArtifactKind.AUDIO_STREAM, ArtifactKind.VIDEO_STREAM]:
+        artifact = session.execute(
+            select(Artifact).where(Artifact.job_id == job.id, Artifact.kind == kind)
+        ).scalar_one_or_none()
+        if artifact:
+            return artifact
+    return None
+
+
 def _handle_finalize(session: Session, job: Job, stage: JobStage, task) -> dict:
     """Move final artifact to output directory and create archive record."""
     entry = job.entry
@@ -508,14 +608,8 @@ def _handle_finalize(session: Session, job: Job, stage: JobStage, task) -> dict:
     if not entry or not req:
         raise ValueError("Job missing entry or request")
 
-    # Find the best final artifact (cleaned > merged > audio > video)
-    final_artifact = None
-    for kind in [ArtifactKind.CLEANED, ArtifactKind.MERGED, ArtifactKind.AUDIO_STREAM, ArtifactKind.VIDEO_STREAM]:
-        final_artifact = session.execute(
-            select(Artifact).where(Artifact.job_id == job.id, Artifact.kind == kind)
-        ).scalar_one_or_none()
-        if final_artifact:
-            break
+    # Find the best final artifact
+    final_artifact = _find_latest_artifact(session, job)
 
     if not final_artifact:
         raise ValueError("No artifact to finalize")

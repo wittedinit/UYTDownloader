@@ -12,6 +12,8 @@ class JobCreateRequest(BaseModel):
     format_mode: str = "video_audio"  # video_audio | audio_only | video_only
     quality: str = "best"  # best | 1080p | 720p | 480p | audio_only
     sponsorblock_action: str = "keep"  # keep | mark_chapters | remove
+    embed_subtitles: bool = False
+    normalize_audio: bool = False
     output_dir: str | None = None
 
 

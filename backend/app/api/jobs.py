@@ -39,6 +39,8 @@ async def create_jobs(req: JobCreateRequest):
         quality=req.quality,
         sponsorblock_action=req.sponsorblock_action,
         output_dir=req.output_dir,
+        embed_subtitles=req.embed_subtitles,
+        normalize_audio=req.normalize_audio,
     )
 
     if not created:
