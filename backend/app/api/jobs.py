@@ -339,7 +339,7 @@ async def bulk_delete_jobs(
     return {"deleted": deleted, "skipped": skipped}
 
 
-class BulkRetryRequest(BaseModel):
+class BulkRetryRequest(PydanticBaseModel):
     job_ids: list[str]
 
 
