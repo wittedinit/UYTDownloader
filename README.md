@@ -101,7 +101,7 @@ Search for **UYTDownloader** in the Apps tab and click Install. Then configure:
 | `PUID` | `1000` | `99` (Unraid nobody user) |
 | `PGID` | `1000` | `100` (Unraid users group) |
 | `TZ` | `UTC` | Your timezone, e.g., `Europe/London` |
-| `UYT_CONCURRENCY_MODE` | `balanced` | `safe` (1 job), `balanced` (3), `power` (6) |
+| `UYT_CONCURRENCY_MODE` | `balanced` | Download policy: `safe` (1 fragment, 1.5s sleep), `balanced` (3 fragments, 0.5s sleep), `power` (5 fragments, no sleep) |
 | `UYT_RETENTION` | `forever` | Auto-delete period: `1_week`, `1_month`, `1_year`, `forever` |
 | `UYT_DISK_GUARD_PCT` | `10` | Min free disk % before auto-cleanup starts |
 | `UYT_DISK_GUARD_STRATEGY` | `oldest_first` | `oldest_first`, `newest_first`, `largest_first`, `smallest_first` |
@@ -261,7 +261,7 @@ GET  /health                            System health check
 |----------|---------|-------------|
 | `UYT_PORT` | `8000` | Backend API port |
 | `UYT_FRONTEND_PORT` | `3000` | Frontend port |
-| `UYT_CONCURRENCY_MODE` | `balanced` | Download concurrency: `safe` (1), `balanced` (3), `power` (6) |
+| `UYT_CONCURRENCY_MODE` | `balanced` | Download policy engine mode — controls pacing, fragment concurrency, and throttle detection. See below. |
 | `UYT_SPONSORBLOCK_DEFAULT` | `keep` | Default SponsorBlock action: `keep`, `mark_chapters`, `remove` |
 | `UYT_RETENTION` | `forever` | File retention: `1_day`, `1_week`, `1_month`, `3_months`, `6_months`, `1_year`, `forever` |
 | `UYT_DISK_GUARD_PCT` | `10` | Auto-cleanup when free disk space below this % |
@@ -270,6 +270,28 @@ GET  /health                            System health check
 | `PGID` | `1000` | File owner GID (Unraid: `100`) |
 | `TZ` | `UTC` | Timezone |
 | `NVIDIA_VISIBLE_DEVICES` | `void` | GPU access (`all` to enable) |
+
+### Download Policy Engine
+
+UYTDownloader does not blast YouTube with unconstrained connections. A download policy engine controls how aggressively yt-dlp downloads, reducing the risk of throttling or IP blocking.
+
+| Setting | Safe | Balanced (default) | Power |
+|---------|------|----------|-------|
+| Fragment concurrency | 1 | 3 | 5 |
+| Request sleep | 1.5s | 0.5s | 0s |
+| Download sleep | 5–30s | 2–10s | 0s |
+| Throttle detection | 100 KB/s | 100 KB/s | 100 KB/s |
+| Retries (network/fragment/extractor) | 5/10/5 | 3/5/3 | 3/5/3 |
+| Socket timeout | 30s | 20s | 15s |
+
+**How it works:**
+- **Request pacing** — sleeps between HTTP requests to mimic normal browsing
+- **Download pacing** — sleeps between consecutive video downloads in a queue
+- **Fragment concurrency** — controls how many video chunks download in parallel
+- **Throttle detection** — if speed drops below 100 KB/s, yt-dlp re-extracts the URL to get a fresh CDN node
+- **Automatic retries** — configurable per mode for network errors, fragment failures, and extractor changes
+
+Set `UYT_CONCURRENCY_MODE=safe` if you're on a shared IP or VPN, or if you've been throttled. Use `power` only for fast connections with a few videos.
 
 ### Volumes (Persistent Storage)
 

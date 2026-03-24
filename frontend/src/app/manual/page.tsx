@@ -393,6 +393,9 @@ Multiple filters can be combined. All enabled filters must pass for a video to b
 - **redis** — Redis queue broker status
 - **ffmpeg** — ffmpeg version installed in the worker container
 - **yt_dlp** — yt-dlp version (the YouTube extraction engine)
+- **gpu** — detected GPU acceleration (NVIDIA, Metal, VA-API, or CPU fallback)
+- **download_policy** — active download mode, fragment concurrency, request sleep, and throttle detection threshold
+- **cookies** — whether browser cookies are configured (needed for age-gated content)
 - **config_dir / output_dir / work_dir** — configured directory paths
 
 All values should show green. If any show red, the corresponding service may need to be restarted.`,
@@ -440,14 +443,42 @@ The Settings page shows which GPU (if any) was detected.`,
       },
       {
         id: "advanced-concurrency",
-        title: "Concurrency Modes",
-        body: `Controls how many downloads run simultaneously:
+        title: "Download Policy Engine",
+        body: `UYTDownloader includes a download policy engine that controls how aggressively yt-dlp downloads. This is critical for avoiding YouTube throttling and IP blocking.
 
-- **Safe** — 1 active download at a time. Least likely to trigger YouTube rate limiting.
-- **Balanced** — 3 simultaneous downloads. Good default for most users. (Default)
-- **Power** — 6 simultaneous downloads. Faster for large playlists but higher risk of throttling.
+**Three profiles** — set via \`UYT_CONCURRENCY_MODE\` environment variable:
 
-Set via the \`UYT_CONCURRENCY_MODE\` environment variable. Requires container restart to change.`,
+**Safe:**
+- 1 concurrent fragment download
+- 1.5 second sleep between HTTP requests
+- 5–30 second sleep between video downloads
+- Maximum retry counts (5 retries, 10 fragment retries)
+- Best for: shared IPs, VPNs, or if you've been throttled
+
+**Balanced (default):**
+- 3 concurrent fragment downloads
+- 0.5 second sleep between HTTP requests
+- 2–10 second sleep between video downloads
+- Standard retry counts
+- Best for: most users, good speed without attracting attention
+
+**Power:**
+- 5 concurrent fragment downloads
+- No request or download sleep
+- Standard retry counts
+- Best for: fast connections, downloading a few videos quickly
+- Warning: higher risk of temporary throttling
+
+**What the engine does behind the scenes:**
+- **Throttle detection** — if download speed drops below 100 KB/s, yt-dlp automatically re-extracts the URL to get a fresh CDN node (YouTube sometimes routes to slow servers as a soft throttle)
+- **Request pacing** — sleeps between HTTP requests to mimic normal browsing patterns
+- **Download pacing** — sleeps between consecutive video downloads in a queue
+- **Fragment concurrency** — controls how many video chunks download in parallel (YouTube serves videos as many small fragments)
+- **Automatic retries** — with configurable counts for network errors, fragment failures, and extractor changes
+
+**Health check:** Visit Settings → System Health to see the active download policy including mode, fragment concurrency, request sleep, and throttle detection threshold.
+
+**Tip:** If downloads are consistently slow or failing, try switching to Safe mode. If you've been throttled, wait 15–30 minutes and use browser cookies for authentication.`,
       },
       {
         id: "advanced-api",
