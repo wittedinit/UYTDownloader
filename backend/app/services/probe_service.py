@@ -60,7 +60,10 @@ def execute_probe(url: str, source_id: str | None = None) -> dict:
     Returns {source_id, entry_count, status}.
     """
     cookie_path = settings.cookie_path
-    wrapper = YtdlpWrapper(cookie_file=str(cookie_path) if cookie_path else None)
+    wrapper = YtdlpWrapper(
+        cookie_file=str(cookie_path) if cookie_path else None,
+        concurrency_mode=settings.concurrency_mode,
+    )
 
     # Extract metadata
     logger.info("Probing URL: %s", url)

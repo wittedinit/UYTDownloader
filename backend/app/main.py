@@ -84,6 +84,17 @@ async def health():
     except Exception as e:
         checks["gpu"] = {"gpu_available": False, "error": str(e)}
 
+    # Download policy
+    from app.worker.ytdlp_wrapper import DOWNLOAD_PROFILES
+    profile = DOWNLOAD_PROFILES.get(settings.concurrency_mode, {})
+    checks["download_policy"] = {
+        "mode": settings.concurrency_mode,
+        "fragment_concurrency": profile.get("concurrent_fragment_downloads"),
+        "request_sleep": profile.get("sleep_requests"),
+        "download_sleep": profile.get("sleep_interval"),
+        "throttle_detection": f"{profile.get('throttled_rate', 0) // 1000}KB/s",
+    }
+
     # Cookie status
     cookie_path = settings.cookie_path
     if cookie_path and cookie_path.exists():

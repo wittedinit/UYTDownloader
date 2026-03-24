@@ -367,7 +367,11 @@ def _get_wrapper(job: Job) -> YtdlpWrapper:
                     except Exception:
                         pass  # Don't let progress updates kill the download
 
-    return YtdlpWrapper(cookie_file=cookie, progress_callback=progress_hook)
+    return YtdlpWrapper(
+        cookie_file=cookie,
+        progress_callback=progress_hook,
+        concurrency_mode=settings.concurrency_mode,
+    )
 
 
 def _job_work_dir(job: Job) -> Path:
