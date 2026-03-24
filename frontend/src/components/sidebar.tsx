@@ -54,7 +54,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-[var(--card-border)]">
-        <p className="text-xs text-[var(--sidebar-text)]">v0.1.5</p>
+        <p className="text-xs text-[var(--sidebar-text)]">v0.1.6</p>
       </div>
     </aside>
   );
