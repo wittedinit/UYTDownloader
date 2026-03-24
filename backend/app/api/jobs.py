@@ -43,6 +43,7 @@ async def create_jobs(req: JobCreateRequest):
         output_dir=req.output_dir,
         embed_subtitles=req.embed_subtitles,
         normalize_audio=req.normalize_audio,
+        playback_speed=req.playback_speed,
         output_format=req.output_format,
         video_bitrate=req.video_bitrate,
     )

@@ -92,6 +92,7 @@ def _build_stages(
     embed_subs: bool = False,
     normalize: bool = False,
     output_format: str | None = None,
+    playback_speed: float = 1.0,
 ) -> list[dict]:
     """Return ordered list of stage definitions for a download job."""
     stages = [
@@ -123,6 +124,10 @@ def _build_stages(
         next_order = max(s["order"] for s in stages) + 1
         stages.append({"type": StageType.REENCODE, "order": next_order})
 
+    if playback_speed != 1.0:
+        next_order = max(s["order"] for s in stages) + 1
+        stages.append({"type": StageType.ADJUST_SPEED, "order": next_order})
+
     # Always embed metadata (title, artist, date, thumbnail) as the last
     # post-processing step before finalize
     next_order = max(s["order"] for s in stages) + 1
@@ -142,6 +147,7 @@ def create_jobs(
     output_dir: str | None = None,
     embed_subtitles: bool = False,
     normalize_audio: bool = False,
+    playback_speed: float = 1.0,
     output_format: str | None = None,
     video_bitrate: str | None = None,
 ) -> list[dict]:
@@ -207,12 +213,13 @@ def create_jobs(
                 cookie_file=str(cookie_path) if cookie_path else None,
                 output_format=output_format,
                 video_bitrate=video_bitrate,
+                playback_speed=playback_speed,
                 output_signature_hash=sig,
             )
             session.add(req)
 
             # Create stages
-            stage_defs = _build_stages(format_mode, sponsorblock_action, embed_subtitles, normalize_audio, output_format)
+            stage_defs = _build_stages(format_mode, sponsorblock_action, embed_subtitles, normalize_audio, output_format, playback_speed)
             for sd in stage_defs:
                 stage = JobStage(job_id=job.id, type=sd["type"], order=sd["order"])
                 session.add(stage)
@@ -273,6 +280,7 @@ def execute_stage(job_id: str, stage_id: str, task=None) -> dict:
             StageType.NORMALIZE_AUDIO: _handle_normalize_audio,
             StageType.REENCODE: _handle_reencode,
             StageType.EMBED_METADATA: _handle_embed_metadata,
+            StageType.ADJUST_SPEED: _handle_adjust_speed,
             StageType.FINALIZE: _handle_finalize,
         }
         handler = handlers.get(stage.type)
@@ -653,7 +661,7 @@ def _handle_normalize_audio(session: Session, job: Job, stage: JobStage, task) -
 
 def _find_latest_artifact(session: Session, job: Job) -> Artifact | None:
     """Find the most processed artifact for a job."""
-    for kind in [ArtifactKind.TAGGED, ArtifactKind.REENCODED, ArtifactKind.NORMALIZED, ArtifactKind.SUBTITLED, ArtifactKind.CLEANED, ArtifactKind.MERGED, ArtifactKind.AUDIO_STREAM, ArtifactKind.VIDEO_STREAM]:
+    for kind in [ArtifactKind.TAGGED, ArtifactKind.SPEED_ADJUSTED, ArtifactKind.REENCODED, ArtifactKind.NORMALIZED, ArtifactKind.SUBTITLED, ArtifactKind.CLEANED, ArtifactKind.MERGED, ArtifactKind.AUDIO_STREAM, ArtifactKind.VIDEO_STREAM]:
         artifact = session.execute(
             select(Artifact).where(Artifact.job_id == job.id, Artifact.kind == kind)
         ).scalar_one_or_none()
@@ -757,6 +765,37 @@ def _handle_reencode(session: Session, job: Job, stage: JobStage, task) -> dict:
         "bitrate": video_bitrate,
         "artifact_id": str(artifact.id),
     }
+
+
+def _handle_adjust_speed(session: Session, job: Job, stage: JobStage, task) -> dict:
+    """Adjust playback speed using ffmpeg atempo/setpts filters."""
+    from app.services.postprocess_service import adjust_speed
+
+    req = job.request
+    if not req or req.playback_speed == 1.0:
+        return {"adjusted": False, "reason": "no speed adjustment needed"}
+
+    source_artifact = _find_latest_artifact(session, job)
+    if not source_artifact:
+        return {"adjusted": False, "reason": "no source artifact"}
+
+    result = adjust_speed(source_artifact.path, req.playback_speed)
+
+    if result.get("adjusted") and result.get("output_path"):
+        artifact = Artifact(
+            job_id=job.id,
+            kind=ArtifactKind.SPEED_ADJUSTED,
+            path=result["output_path"],
+            filename=os.path.basename(result["output_path"]),
+            size_bytes=result.get("size_bytes"),
+            produced_by_stage_id=stage.id,
+            parent_artifact_id=source_artifact.id,
+        )
+        session.add(artifact)
+        session.flush()
+        result["artifact_id"] = str(artifact.id)
+
+    return result
 
 
 def _handle_embed_metadata(session: Session, job: Job, stage: JobStage, task) -> dict:

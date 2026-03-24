@@ -324,3 +324,70 @@ def normalize_audio(input_path: str, target_lufs: float = -16.0) -> dict:
         "target_lufs": target_lufs,
         "size_bytes": os.path.getsize(output_path) if os.path.exists(output_path) else None,
     }
+
+
+def adjust_speed(input_path: str, speed: float = 1.0) -> dict:
+    """
+    Adjust playback speed of audio/video.
+    Uses ffmpeg atempo filter for audio (supports 0.5-2.0 range,
+    chains filters for values outside that range).
+    For video, uses setpts filter.
+    """
+    if speed == 1.0:
+        return {"adjusted": False, "reason": "speed is 1.0x, no change needed"}
+
+    if speed < 0.25 or speed > 4.0:
+        return {"adjusted": False, "reason": f"speed {speed}x is outside supported range (0.25-4.0)"}
+
+    p = Path(input_path)
+    output_path = str(p.parent / f"{p.stem}.speed{p.suffix}")
+
+    # Build atempo filter chain (atempo only supports 0.5-2.0 per instance)
+    atempo_filters = []
+    remaining = speed
+    while remaining > 2.0:
+        atempo_filters.append("atempo=2.0")
+        remaining /= 2.0
+    while remaining < 0.5:
+        atempo_filters.append("atempo=0.5")
+        remaining /= 0.5
+    atempo_filters.append(f"atempo={remaining:.4f}")
+    audio_filter = ",".join(atempo_filters)
+
+    has_video = p.suffix.lower() in (".mp4", ".mkv", ".webm", ".m4v")
+
+    if has_video:
+        # Speed up both video and audio
+        video_filter = f"setpts={1.0/speed:.4f}*PTS"
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-filter:v", video_filter,
+            "-filter:a", audio_filter,
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+            "-c:a", "aac", "-b:a", "192k",
+            "-movflags", "+faststart",
+            output_path,
+        ]
+    else:
+        # Audio only — just adjust tempo
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-af", audio_filter,
+            "-c:a", "aac", "-b:a", "192k",
+            output_path,
+        ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+    if result.returncode != 0:
+        logger.error("Speed adjustment failed: %s", result.stderr[-300:])
+        return {"adjusted": False, "reason": result.stderr[-200:]}
+
+    return {
+        "adjusted": True,
+        "output_path": output_path,
+        "speed": speed,
+        "size_bytes": os.path.getsize(output_path) if os.path.exists(output_path) else None,
+    }

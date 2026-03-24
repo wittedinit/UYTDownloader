@@ -15,7 +15,11 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("ALTER TYPE artifactkind ADD VALUE IF NOT EXISTS 'TAGGED'")
+    op.execute("ALTER TYPE artifactkind ADD VALUE IF NOT EXISTS 'SPEED_ADJUSTED'")
     op.execute("ALTER TYPE stagetype ADD VALUE IF NOT EXISTS 'EMBED_METADATA'")
+    op.execute("ALTER TYPE stagetype ADD VALUE IF NOT EXISTS 'ADJUST_SPEED'")
+    # Add playback_speed column to job_requests
+    op.execute("ALTER TABLE job_requests ADD COLUMN IF NOT EXISTS playback_speed FLOAT DEFAULT 1.0")
 
 
 def downgrade() -> None:

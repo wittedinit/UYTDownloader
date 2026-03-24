@@ -41,6 +41,7 @@ class StageType(str, enum.Enum):
     NORMALIZE_AUDIO = "normalize_audio"
     REENCODE = "reencode"
     EMBED_METADATA = "embed_metadata"
+    ADJUST_SPEED = "adjust_speed"
     FINALIZE = "finalize"
 
 
@@ -60,6 +61,7 @@ class ArtifactKind(str, enum.Enum):
     NORMALIZED = "normalized"
     REENCODED = "reencoded"
     TAGGED = "tagged"
+    SPEED_ADJUSTED = "speed_adjusted"
 
 
 class SponsorBlockAction(str, enum.Enum):

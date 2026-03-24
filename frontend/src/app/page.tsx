@@ -29,6 +29,7 @@ export default function Home() {
   const [sponsorblock, setSponsorblock] = useState("keep");
   const [embedSubs, setEmbedSubs] = useState(false);
   const [normalizeAudio, setNormalizeAudio] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [outputFormat, setOutputFormat] = useState("original");
   const [videoBitrate, setVideoBitrate] = useState("auto");
   const [hydrated, setHydrated] = useState(false);
@@ -48,6 +49,7 @@ export default function Home() {
       if (saved.sponsorblock) setSponsorblock(saved.sponsorblock as string);
       if (saved.embedSubs != null) setEmbedSubs(saved.embedSubs as boolean);
       if (saved.normalizeAudio != null) setNormalizeAudio(saved.normalizeAudio as boolean);
+      if (saved.playbackSpeed != null) setPlaybackSpeed(saved.playbackSpeed as number);
       if (saved.outputFormat) setOutputFormat(saved.outputFormat as string);
       if (saved.videoBitrate) setVideoBitrate(saved.videoBitrate as string);
     }
@@ -60,10 +62,10 @@ export default function Home() {
     saveSession({
       url, phase, error, source, entries,
       selected: Array.from(selected),
-      formatMode, quality, sponsorblock, embedSubs, normalizeAudio,
+      formatMode, quality, sponsorblock, embedSubs, normalizeAudio, playbackSpeed,
       outputFormat, videoBitrate,
     });
-  }, [hydrated, url, phase, error, source, entries, selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio, outputFormat, videoBitrate]);
+  }, [hydrated, url, phase, error, source, entries, selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio, playbackSpeed, outputFormat, videoBitrate]);
 
   const handleProbe = useCallback(async () => {
     if (!url.trim()) return;
@@ -108,6 +110,7 @@ export default function Home() {
         sponsorblock_action: sponsorblock,
         embed_subtitles: embedSubs,
         normalize_audio: normalizeAudio,
+        playback_speed: playbackSpeed,
         output_format: outputFormat !== "original" ? outputFormat : undefined,
         video_bitrate: videoBitrate !== "auto" ? videoBitrate : undefined,
       });
@@ -116,7 +119,7 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "Failed to create jobs");
       setPhase("error");
     }
-  }, [selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio]);
+  }, [selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio, playbackSpeed]);
 
   const toggleEntry = (id: string) => {
     setSelected((prev) => {
@@ -374,6 +377,17 @@ export default function Home() {
                   className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500" />
                 Normalize audio
               </label>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-[var(--muted)]">Speed:</span>
+                <select value={playbackSpeed} onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                  className="px-2 py-1 bg-[var(--background)] border border-[var(--card-border)] rounded text-sm focus:ring-2 focus:ring-indigo-500">
+                  <option value={1.0}>1x (Normal)</option>
+                  <option value={1.25}>1.25x</option>
+                  <option value={1.5}>1.5x</option>
+                  <option value={1.75}>1.75x</option>
+                  <option value={2.0}>2x</option>
+                </select>
+              </div>
             </div>
           </div>
 

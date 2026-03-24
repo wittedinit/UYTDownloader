@@ -173,6 +173,7 @@ export async function createJobs(params: {
   sponsorblock_action?: string;
   embed_subtitles?: boolean;
   normalize_audio?: boolean;
+  playback_speed?: number;
   output_format?: string;
   video_bitrate?: string;
 }) {
