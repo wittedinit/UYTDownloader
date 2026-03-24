@@ -150,7 +150,7 @@ class MergeRequest(BaseModel):
 
 @router.post("/merge")
 async def merge_files(req: MergeRequest):
-    """Merge multiple library files into one. Runs synchronously for simplicity."""
+    """Queue a merge of multiple library files. Returns a task ID for polling."""
     if len(req.filenames) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 files to merge")
 
@@ -163,27 +163,7 @@ async def merge_files(req: MergeRequest):
         fpath = output_dir / fname
         if not fpath.exists():
             raise HTTPException(status_code=404, detail=f"File not found: {fname}")
-
-        # Get duration via ffprobe
-        duration = None
-        try:
-            probe = subprocess.run(
-                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
-                 "-of", "default=noprint_wrappers=1:nokey=1", str(fpath)],
-                capture_output=True, text=True, timeout=10,
-            )
-            if probe.stdout.strip():
-                duration = float(probe.stdout.strip())
-        except Exception:
-            pass
-
-        input_files.append({
-            "path": str(fpath),
-            "title": fpath.stem,
-            "duration": duration,
-        })
-
-    from app.services.compilation_service import build_compilation
+        input_files.append(str(fpath))
 
     safe_title = "".join(c if c.isalnum() or c in " ._-" else "_" for c in req.title)
     is_audio = req.mode.startswith("audio_")
@@ -198,14 +178,24 @@ async def merge_files(req: MergeRequest):
         out_path = f"{stem}_{counter}{suffix}"
         counter += 1
 
-    result = build_compilation(input_files, out_path, req.mode, req.normalize_audio)
+    from app.worker.tasks import run_library_merge
+    task = run_library_merge.delay(input_files, out_path, req.mode, req.normalize_audio)
 
-    if result.get("error"):
-        raise HTTPException(status_code=500, detail=result["error"])
+    return {"task_id": task.id, "status": "queued", "output_filename": os.path.basename(out_path)}
 
-    return {
-        "filename": os.path.basename(out_path),
-        "size_bytes": result.get("size_bytes", 0),
-        "chapters": result.get("chapters", 0),
-        "output_path": out_path,
-    }
+
+@router.get("/merge/{task_id}")
+async def get_merge_status(task_id: str):
+    """Poll merge task status."""
+    from app.celery_app import celery_app
+    result = celery_app.AsyncResult(task_id)
+    if result.state == "PENDING":
+        return {"task_id": task_id, "status": "queued"}
+    elif result.state == "STARTED" or result.state == "PROGRESS":
+        meta = result.info or {}
+        return {"task_id": task_id, "status": "running", "progress": meta.get("progress", 0), "stage": meta.get("stage", "preparing")}
+    elif result.state == "SUCCESS":
+        data = result.result or {}
+        return {"task_id": task_id, "status": "completed", **data}
+    else:
+        return {"task_id": task_id, "status": "failed", "error": str(result.info)}

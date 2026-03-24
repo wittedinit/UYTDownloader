@@ -333,10 +333,23 @@ export async function mergeLibraryFiles(params: {
   mode?: string;
   normalize_audio?: boolean;
 }) {
-  return apiFetch<{ filename: string; size_bytes: number; chapters: number }>("/api/library/merge", {
+  return apiFetch<{ task_id: string; status: string; output_filename: string }>("/api/library/merge", {
     method: "POST",
     body: JSON.stringify(params),
   });
+}
+
+export async function getMergeStatus(taskId: string) {
+  return apiFetch<{
+    task_id: string;
+    status: string;
+    progress?: number;
+    stage?: string;
+    filename?: string;
+    size_bytes?: number;
+    chapters?: number;
+    error?: string;
+  }>(`/api/library/merge/${taskId}`);
 }
 
 // ── Storage Management ────────────────────────────────────────────────

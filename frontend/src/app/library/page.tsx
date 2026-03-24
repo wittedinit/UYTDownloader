@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { listLibraryFiles, deleteLibraryFile, mergeLibraryFiles, createZip, deleteZip, resolveApiBase, type LibraryFile } from "@/lib/api";
+import { listLibraryFiles, deleteLibraryFile, mergeLibraryFiles, getMergeStatus, createZip, deleteZip, resolveApiBase, type LibraryFile } from "@/lib/api";
 
 export default function LibraryPage() {
   const [files, setFiles] = useState<LibraryFile[]>([]);
@@ -90,17 +90,34 @@ export default function LibraryPage() {
                         const hasVideo = Array.from(selected).some((f) => f.endsWith(".mp4") || f.endsWith(".mkv") || f.endsWith(".webm"));
                         setMerging(true);
                         try {
-                          await mergeLibraryFiles({
+                          const res = await mergeLibraryFiles({
                             filenames: Array.from(selected),
                             title,
                             mode: hasVideo ? "video_chapters" : "audio_chapters",
                           });
-                          setSelected(new Set());
-                          fetchFiles();
-                          alert("Merge complete!");
+                          // Poll for completion
+                          const taskId = res.task_id;
+                          const poll = async () => {
+                            for (let i = 0; i < 600; i++) {
+                              await new Promise((r) => setTimeout(r, 2000));
+                              const status = await getMergeStatus(taskId);
+                              if (status.status === "completed") {
+                                setSelected(new Set());
+                                fetchFiles();
+                                setMerging(false);
+                                return;
+                              }
+                              if (status.status === "failed") {
+                                throw new Error(status.error || "Merge failed");
+                              }
+                            }
+                            throw new Error("Merge timed out");
+                          };
+                          await poll();
                         } catch (e) {
                           alert(e instanceof Error ? e.message : "Merge failed");
-                        } finally { setMerging(false); }
+                          setMerging(false);
+                        }
                       }}
                       className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-sm font-medium hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 transition-all">
                       {merging ? "Merging..." : `Merge ${selected.size}`}

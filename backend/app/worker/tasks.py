@@ -191,6 +191,61 @@ def run_compilation(
         return {"status": "failed", "error": str(e)}
 
 
+@shared_task(bind=True, max_retries=1, default_retry_delay=10)
+def run_library_merge(
+    self,
+    input_paths: list[str],
+    output_path: str,
+    mode: str,
+    normalize_audio: bool,
+) -> dict:
+    """Merge library files asynchronously. Reports progress via Celery state."""
+    import os
+    import subprocess
+    from app.services.compilation_service import build_compilation
+
+    try:
+        # Build input_files list with durations
+        self.update_state(state="PROGRESS", meta={"stage": "probing", "progress": 5})
+        input_files = []
+        for i, path in enumerate(input_paths):
+            duration = None
+            try:
+                probe = subprocess.run(
+                    ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+                     "-of", "default=noprint_wrappers=1:nokey=1", path],
+                    capture_output=True, text=True, timeout=10,
+                )
+                if probe.stdout.strip():
+                    duration = float(probe.stdout.strip())
+            except Exception:
+                pass
+            input_files.append({
+                "path": path,
+                "title": os.path.splitext(os.path.basename(path))[0],
+                "duration": duration,
+            })
+            pct = 5 + int((i + 1) / len(input_paths) * 15)
+            self.update_state(state="PROGRESS", meta={"stage": "probing", "progress": pct})
+
+        self.update_state(state="PROGRESS", meta={"stage": "merging", "progress": 25})
+        result = build_compilation(input_files, output_path, mode, normalize_audio)
+
+        if result.get("error"):
+            return {"status": "failed", "error": result["error"]}
+
+        return {
+            "status": "completed",
+            "filename": os.path.basename(result.get("output_path", output_path)),
+            "size_bytes": result.get("size_bytes", 0),
+            "chapters": result.get("chapters", 0),
+        }
+
+    except Exception as e:
+        logger.error("Library merge failed: %s", e, exc_info=True)
+        return {"status": "failed", "error": str(e)}
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def run_stage(self, job_id: str, stage_id: str) -> dict:
     """Execute one stage of a job. Triggers next stages on completion."""
