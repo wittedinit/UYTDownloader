@@ -152,6 +152,98 @@ def embed_thumbnail(input_path: str, thumbnail_url: str | None) -> dict:
     return {"embedded": True, "output_path": output_path}
 
 
+def embed_metadata(
+    input_path: str,
+    title: str | None = None,
+    artist: str | None = None,
+    album: str | None = None,
+    date: str | None = None,
+    description: str | None = None,
+    track_number: int | None = None,
+    thumbnail_url: str | None = None,
+) -> dict:
+    """
+    Embed metadata tags + optional thumbnail into media file.
+    Works for MP4, MKV, M4A, MP3, WebM, Opus — uses ffmpeg metadata flags.
+    Also embeds thumbnail as cover art when provided.
+    """
+    if not any([title, artist, album, date, description, track_number, thumbnail_url]):
+        return {"embedded": False, "reason": "no metadata to embed"}
+
+    p = Path(input_path)
+    output_path = str(p.parent / f"{p.stem}.tagged{p.suffix}")
+
+    cmd = ["ffmpeg", "-y", "-i", input_path]
+
+    # Download and attach thumbnail if provided
+    thumb_path = None
+    if thumbnail_url:
+        thumb_path = str(p.parent / f"{p.stem}.cover.jpg")
+        try:
+            import httpx
+            resp = httpx.get(thumbnail_url, timeout=30, follow_redirects=True)
+            resp.raise_for_status()
+            with open(thumb_path, "wb") as f:
+                f.write(resp.content)
+            cmd.extend(["-i", thumb_path])
+        except Exception as e:
+            logger.warning("Failed to download thumbnail for metadata: %s", e)
+            thumb_path = None
+
+    # Map all streams from input
+    cmd.extend(["-map", "0"])
+
+    # Map thumbnail as attached picture
+    if thumb_path:
+        cmd.extend(["-map", "1", "-disposition:v:1", "attached_pic"])
+
+    # Copy all streams (no re-encode)
+    cmd.extend(["-c", "copy"])
+
+    # Add metadata tags
+    tags = {}
+    if title:
+        tags["title"] = title
+    if artist:
+        tags["artist"] = artist
+        tags["album_artist"] = artist
+    if album:
+        tags["album"] = album
+    if date:
+        tags["date"] = date
+    if description:
+        # Truncate long descriptions for tag compatibility
+        tags["comment"] = description[:1000] if len(description) > 1000 else description
+        tags["description"] = description[:1000] if len(description) > 1000 else description
+    if track_number is not None:
+        tags["track"] = str(track_number)
+
+    for key, value in tags.items():
+        cmd.extend(["-metadata", f"{key}={value}"])
+
+    cmd.append(output_path)
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+
+    # Clean up thumbnail
+    if thumb_path:
+        try:
+            os.unlink(thumb_path)
+        except OSError:
+            pass
+
+    if result.returncode != 0:
+        logger.error("Metadata embedding failed: %s", result.stderr[-300:])
+        return {"embedded": False, "reason": result.stderr[-200:]}
+
+    return {
+        "embedded": True,
+        "output_path": output_path,
+        "tags": list(tags.keys()),
+        "thumbnail": thumb_path is not None,
+    }
+
+
 def normalize_audio(input_path: str, target_lufs: float = -16.0) -> dict:
     """
     Normalize audio loudness using ffmpeg loudnorm (EBU R128).

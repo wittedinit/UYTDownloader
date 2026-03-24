@@ -40,6 +40,7 @@ class StageType(str, enum.Enum):
     EMBED_SUBTITLES = "embed_subtitles"
     NORMALIZE_AUDIO = "normalize_audio"
     REENCODE = "reencode"
+    EMBED_METADATA = "embed_metadata"
     FINALIZE = "finalize"
 
 
@@ -58,6 +59,7 @@ class ArtifactKind(str, enum.Enum):
     SUBTITLED = "subtitled"
     NORMALIZED = "normalized"
     REENCODED = "reencoded"
+    TAGGED = "tagged"
 
 
 class SponsorBlockAction(str, enum.Enum):

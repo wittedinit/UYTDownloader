@@ -123,6 +123,11 @@ def _build_stages(
         next_order = max(s["order"] for s in stages) + 1
         stages.append({"type": StageType.REENCODE, "order": next_order})
 
+    # Always embed metadata (title, artist, date, thumbnail) as the last
+    # post-processing step before finalize
+    next_order = max(s["order"] for s in stages) + 1
+    stages.append({"type": StageType.EMBED_METADATA, "order": next_order})
+
     final_order = max(s["order"] for s in stages) + 1
     stages.append({"type": StageType.FINALIZE, "order": final_order})
 
@@ -267,6 +272,7 @@ def execute_stage(job_id: str, stage_id: str, task=None) -> dict:
             StageType.EMBED_SUBTITLES: _handle_embed_subtitles,
             StageType.NORMALIZE_AUDIO: _handle_normalize_audio,
             StageType.REENCODE: _handle_reencode,
+            StageType.EMBED_METADATA: _handle_embed_metadata,
             StageType.FINALIZE: _handle_finalize,
         }
         handler = handlers.get(stage.type)
@@ -647,7 +653,7 @@ def _handle_normalize_audio(session: Session, job: Job, stage: JobStage, task) -
 
 def _find_latest_artifact(session: Session, job: Job) -> Artifact | None:
     """Find the most processed artifact for a job."""
-    for kind in [ArtifactKind.REENCODED, ArtifactKind.NORMALIZED, ArtifactKind.SUBTITLED, ArtifactKind.CLEANED, ArtifactKind.MERGED, ArtifactKind.AUDIO_STREAM, ArtifactKind.VIDEO_STREAM]:
+    for kind in [ArtifactKind.TAGGED, ArtifactKind.REENCODED, ArtifactKind.NORMALIZED, ArtifactKind.SUBTITLED, ArtifactKind.CLEANED, ArtifactKind.MERGED, ArtifactKind.AUDIO_STREAM, ArtifactKind.VIDEO_STREAM]:
         artifact = session.execute(
             select(Artifact).where(Artifact.job_id == job.id, Artifact.kind == kind)
         ).scalar_one_or_none()
@@ -751,6 +757,55 @@ def _handle_reencode(session: Session, job: Job, stage: JobStage, task) -> dict:
         "bitrate": video_bitrate,
         "artifact_id": str(artifact.id),
     }
+
+
+def _handle_embed_metadata(session: Session, job: Job, stage: JobStage, task) -> dict:
+    """Embed metadata tags (title, artist, date, thumbnail) into the media file."""
+    from app.services.postprocess_service import embed_metadata
+
+    entry = job.entry
+    if not entry:
+        return {"embedded": False, "reason": "no entry"}
+
+    source_artifact = _find_latest_artifact(session, job)
+    if not source_artifact:
+        return {"embedded": False, "reason": "no source artifact"}
+
+    # Extract metadata from entry
+    meta = entry.metadata_json or {}
+    thumbnail_url = meta.get("thumbnail") or meta.get("thumbnails", [{}])[-1].get("url")
+    upload_date = entry.upload_date
+    if upload_date:
+        # Format as YYYY-MM-DD for tags
+        date_str = upload_date.strftime("%Y-%m-%d") if hasattr(upload_date, "strftime") else str(upload_date)
+    else:
+        date_str = meta.get("upload_date")
+
+    result = embed_metadata(
+        input_path=source_artifact.path,
+        title=entry.title,
+        artist=meta.get("uploader") or meta.get("channel"),
+        album=meta.get("playlist_title") or meta.get("channel"),
+        date=date_str,
+        description=meta.get("description"),
+        thumbnail_url=thumbnail_url,
+    )
+
+    if result.get("embedded") and result.get("output_path"):
+        artifact = Artifact(
+            job_id=job.id,
+            kind=ArtifactKind.TAGGED,
+            path=result["output_path"],
+            filename=os.path.basename(result["output_path"]),
+            size_bytes=os.path.getsize(result["output_path"]) if os.path.exists(result["output_path"]) else None,
+            produced_by_stage_id=stage.id,
+            parent_artifact_id=source_artifact.id,
+        )
+        session.add(artifact)
+        session.flush()
+        result["artifact_id"] = str(artifact.id)
+
+    return result
 
 
 def _handle_finalize(session: Session, job: Job, stage: JobStage, task) -> dict:
