@@ -215,6 +215,13 @@ export async function bulkDeleteJobs(jobIds: string[]) {
   });
 }
 
+export async function bulkRetryJobs(jobIds: string[]) {
+  return apiFetch<{ retried: number; skipped: number }>("/api/jobs/bulk-retry", {
+    method: "POST",
+    body: JSON.stringify({ job_ids: jobIds }),
+  });
+}
+
 // ── Subscriptions ─────────────────────────────────────────────────────
 
 export interface Subscription {

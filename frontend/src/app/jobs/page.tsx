@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { listJobs, cancelJob, retryJob, getJob, bulkDeleteJobs, deleteJob, type Job, type JobDetail } from "@/lib/api";
+import { listJobs, cancelJob, retryJob, getJob, bulkDeleteJobs, bulkRetryJobs, deleteJob, type Job, type JobDetail } from "@/lib/api";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-slate-500/10 text-slate-400",
@@ -26,6 +26,17 @@ export default function JobsPage() {
   const handleBulkDelete = async () => {
     if (!confirm(`Delete ${selected.size} job${selected.size !== 1 ? "s" : ""} from history?`)) return;
     try { await bulkDeleteJobs(Array.from(selected)); setSelected(new Set()); fetchJobs(); } catch {}
+  };
+
+  const handleBulkRetry = async () => {
+    const failedIds = Array.from(selected).filter((id) => jobs.find((j) => j.id === id && j.status === "failed"));
+    if (failedIds.length === 0) { alert("No failed jobs selected"); return; }
+    try {
+      const res = await bulkRetryJobs(failedIds);
+      setSelected(new Set());
+      fetchJobs();
+      if (res.skipped > 0) alert(`Retried ${res.retried}, skipped ${res.skipped} (not failed)`);
+    } catch (e) { alert(e instanceof Error ? e.message : "Bulk retry failed"); }
   };
 
   const handleDeleteOne = async (id: string) => {
@@ -81,10 +92,18 @@ export default function JobsPage() {
         ))}
         <div className="flex items-center gap-3 ml-auto">
           {selected.size > 0 && (
-            <button onClick={handleBulkDelete}
-              className="px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
-              Delete {selected.size} job{selected.size !== 1 ? "s" : ""}
-            </button>
+            <>
+              {Array.from(selected).some((id) => jobs.find((j) => j.id === id && j.status === "failed")) && (
+                <button onClick={handleBulkRetry}
+                  className="px-3 py-1.5 text-xs font-medium border border-indigo-500/30 text-indigo-400 rounded-lg hover:bg-indigo-500/10 transition-colors">
+                  Retry {Array.from(selected).filter((id) => jobs.find((j) => j.id === id && j.status === "failed")).length} failed
+                </button>
+              )}
+              <button onClick={handleBulkDelete}
+                className="px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
+                Delete {selected.size} job{selected.size !== 1 ? "s" : ""}
+              </button>
+            </>
           )}
           {jobs.length > 0 && (
             <button onClick={toggleAll} className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">

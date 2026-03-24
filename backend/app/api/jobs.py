@@ -339,6 +339,79 @@ async def bulk_delete_jobs(
     return {"deleted": deleted, "skipped": skipped}
 
 
+class BulkRetryRequest(BaseModel):
+    job_ids: list[str]
+
+
+@router.post("/bulk-retry", status_code=200)
+async def bulk_retry_jobs(body: BulkRetryRequest):
+    """Retry multiple failed jobs by ID."""
+    import asyncio
+    from app.services.job_service import _get_sync_session
+
+    if not body.job_ids:
+        return {"retried": 0, "skipped": 0}
+
+    parsed_ids = []
+    for jid in body.job_ids:
+        try:
+            parsed_ids.append(uuid.UUID(jid))
+        except ValueError:
+            continue
+
+    def _do_bulk_retry():
+        session = _get_sync_session()
+        retried = 0
+        skipped = 0
+        for jid in parsed_ids:
+            job = session.execute(
+                select(Job).where(Job.id == jid).options(
+                    selectinload(Job.stages),
+                )
+            ).scalar_one_or_none()
+            if not job or job.status != JobStatus.FAILED:
+                skipped += 1
+                continue
+
+            for stage in job.stages:
+                if stage.status == StageStatus.FAILED:
+                    stage.status = StageStatus.PENDING
+                    stage.error_message = None
+                    stage.started_at = None
+                    stage.finished_at = None
+
+            job.status = JobStatus.QUEUED
+            job.error_code = None
+            job.error_message = None
+            job.progress_pct = 0.0
+            job.speed_bps = None
+            job.eta_seconds = None
+            session.flush()
+
+            first_pending = sorted(
+                [s for s in job.stages if s.status == StageStatus.PENDING],
+                key=lambda s: s.order,
+            )
+            if first_pending:
+                from app.worker.tasks import run_stage
+                try:
+                    celery_result = run_stage.delay(str(job.id), str(first_pending[0].id))
+                except Exception:
+                    from app.celery_app import celery as celery_app_instance
+                    celery_app_instance.close()
+                    celery_result = run_stage.delay(str(job.id), str(first_pending[0].id))
+                job.celery_task_id = celery_result.id
+
+            retried += 1
+
+        session.commit()
+        session.close()
+        return retried, skipped
+
+    retried, skipped = await asyncio.to_thread(_do_bulk_retry)
+    return {"retried": retried, "skipped": skipped}
+
+
 def _job_to_out(job: Job) -> JobOut:
     # Compute stage progress
     stages = getattr(job, "stages", None) or []
