@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getDiskUsage, getStoragePresets, runRetention, runDiskGuard, getHealth, type DiskUsage } from "@/lib/api";
+import { getDiskUsage, getStoragePresets, runRetention, runDiskGuard, getHealth, getConcurrencyMode, setConcurrencyMode, type DiskUsage, type ConcurrencyModeInfo } from "@/lib/api";
 
 export default function SettingsPage() {
   const [usage, setUsage] = useState<DiskUsage | null>(null);
@@ -15,13 +15,15 @@ export default function SettingsPage() {
   const [diskGuardPct, setDiskGuardPct] = useState(10);
   const [diskGuardStrategy, setDiskGuardStrategy] = useState("oldest_first");
   const [result, setResult] = useState<string | null>(null);
+  const [concurrency, setConcurrency] = useState<ConcurrencyModeInfo | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [u, p, h] = await Promise.all([getDiskUsage(), getStoragePresets(), getHealth()]);
+      const [u, p, h, c] = await Promise.all([getDiskUsage(), getStoragePresets(), getHealth(), getConcurrencyMode()]);
       setUsage(u);
       setPresets(p);
       setHealth(h);
+      setConcurrency(c);
     } catch {}
   }, []);
 
@@ -162,6 +164,58 @@ export default function SettingsPage() {
           <p className="text-xs text-amber-400 mt-3">Disk has {usage.disk_free_pct}% free — below the {diskGuardPct}% threshold. Files will be deleted on next automatic check.</p>
         )}
       </div>
+
+      {/* Download Policy */}
+      {concurrency && (
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-6 mb-6">
+          <h2 className="text-xs font-medium text-[var(--muted)] mb-1 uppercase tracking-wider">Download Policy</h2>
+          <p className="text-xs text-[var(--muted)] mb-4">Controls download pacing to avoid YouTube throttling. Takes effect on the next download.</p>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            {concurrency.available_modes.map((m) => (
+              <button
+                key={m.key}
+                onClick={async () => {
+                  try {
+                    await setConcurrencyMode(m.key);
+                    const updated = await getConcurrencyMode();
+                    setConcurrency(updated);
+                    setResult(`Download mode changed to ${m.label}`);
+                  } catch (e) { setResult(`Error: ${e}`); }
+                }}
+                className={`p-4 rounded-lg border text-left transition-all ${
+                  concurrency.mode === m.key
+                    ? "border-indigo-500 bg-indigo-500/10"
+                    : "border-[var(--card-border)] bg-[var(--background)] hover:border-[var(--muted)]"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-2 h-2 rounded-full ${concurrency.mode === m.key ? "bg-indigo-400" : "bg-[var(--muted)]"}`} />
+                  <span className="text-sm font-medium">{m.label}</span>
+                </div>
+                <p className="text-xs text-[var(--muted)]">{m.description}</p>
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-4 gap-3 text-center">
+            <div className="p-2 bg-[var(--background)] rounded-lg">
+              <p className="text-lg font-bold">{concurrency.active_profile.fragment_concurrency}</p>
+              <p className="text-xs text-[var(--muted)]">Fragments</p>
+            </div>
+            <div className="p-2 bg-[var(--background)] rounded-lg">
+              <p className="text-lg font-bold">{concurrency.active_profile.request_sleep}s</p>
+              <p className="text-xs text-[var(--muted)]">Req Sleep</p>
+            </div>
+            <div className="p-2 bg-[var(--background)] rounded-lg">
+              <p className="text-lg font-bold">{concurrency.active_profile.download_sleep}s</p>
+              <p className="text-xs text-[var(--muted)]">DL Sleep</p>
+            </div>
+            <div className="p-2 bg-[var(--background)] rounded-lg">
+              <p className="text-lg font-bold">{Math.round(concurrency.active_profile.throttle_detection_bps / 1000)}</p>
+              <p className="text-xs text-[var(--muted)]">Throttle KB/s</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Result message */}
       {result && (

@@ -390,6 +390,33 @@ export async function runDiskGuard(minFreePct: number, strategy: string, dryRun 
   );
 }
 
+// ── Concurrency Mode ──────────────────────────────────────────────────
+
+export interface ConcurrencyModeInfo {
+  mode: string;
+  available_modes: { key: string; label: string; description: string }[];
+  active_profile: {
+    fragment_concurrency: number;
+    request_sleep: number;
+    download_sleep: number;
+    max_sleep: number;
+    throttle_detection_bps: number;
+    retries: number;
+    fragment_retries: number;
+  };
+}
+
+export async function getConcurrencyMode() {
+  return apiFetch<ConcurrencyModeInfo>("/api/storage/concurrency-mode");
+}
+
+export async function setConcurrencyMode(mode: string) {
+  return apiFetch<{ mode: string }>("/api/storage/concurrency-mode", {
+    method: "PUT",
+    body: JSON.stringify({ mode }),
+  });
+}
+
 // ── Health ────────────────────────────────────────────────────────────
 
 export async function getHealth() {
