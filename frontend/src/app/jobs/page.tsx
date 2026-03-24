@@ -46,8 +46,8 @@ export default function JobsPage() {
     return () => clearInterval(interval);
   }, [fetchJobs]);
 
-  const handleCancel = async (jobId: string) => { try { await cancelJob(jobId); fetchJobs(); } catch {} };
-  const handleRetry = async (jobId: string) => { try { await retryJob(jobId); fetchJobs(); } catch {} };
+  const handleCancel = async (jobId: string) => { try { await cancelJob(jobId); fetchJobs(); } catch (e) { alert(e instanceof Error ? e.message : "Cancel failed"); } };
+  const handleRetry = async (jobId: string) => { try { await retryJob(jobId); fetchJobs(); } catch (e) { alert(e instanceof Error ? e.message : "Retry failed"); } };
   const showDetail = async (jobId: string) => { try { setDetail(await getJob(jobId)); } catch {} };
 
   const formatBytes = (bytes: number | null) => {

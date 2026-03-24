@@ -246,6 +246,9 @@ async def retry_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     job.status = JobStatus.QUEUED
     job.error_code = None
     job.error_message = None
+    job.progress_pct = 0.0
+    job.speed_bps = None
+    job.eta_seconds = None
     await db.flush()
 
     # Dispatch first pending stage
