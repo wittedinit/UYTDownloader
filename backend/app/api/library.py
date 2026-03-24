@@ -52,11 +52,12 @@ async def list_downloads(
 @router.get("/download/{filename}")
 async def download_file(filename: str):
     """Download a specific file from the downloads directory."""
-    # Prevent path traversal
-    if "/" in filename or "\\" in filename or ".." in filename:
+    if "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    file_path = Path(settings.output_dir) / filename
+    file_path = (Path(settings.output_dir) / filename).resolve()
+    if not file_path.is_relative_to(Path(settings.output_dir).resolve()):
+        raise HTTPException(status_code=400, detail="Invalid filename")
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -70,10 +71,13 @@ async def download_file(filename: str):
 @router.delete("/{filename}", status_code=204)
 async def delete_file(filename: str):
     """Delete a file from the downloads directory."""
-    if "/" in filename or "\\" in filename or ".." in filename:
+    if "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    file_path = Path(settings.output_dir) / filename
+    file_path = (Path(settings.output_dir) / filename).resolve()
+    allowed = Path(settings.output_dir).resolve()
+    if not file_path.is_relative_to(allowed):
+        raise HTTPException(status_code=400, detail="Invalid filename")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -109,9 +113,11 @@ async def create_zip(req: ZipRequest):
     try:
         with zipfile.ZipFile(str(zip_path), "w", compression=zipfile.ZIP_STORED) as zf:
             for fname in req.filenames:
-                if "/" in fname or "\\" in fname or ".." in fname:
+                if "/" in fname or "\\" in fname:
                     continue
-                fpath = output_dir / fname
+                fpath = (output_dir / fname).resolve()
+                if not fpath.is_relative_to(output_dir.resolve()):
+                    continue
                 if fpath.exists() and fpath.is_file():
                     zf.write(str(fpath), fname)
 
@@ -133,10 +139,12 @@ async def delete_zip(filename: str):
     """Delete a zip file after successful download."""
     if not filename.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Can only delete zip files via this endpoint")
-    if "/" in filename or "\\" in filename or ".." in filename:
+    if "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    file_path = Path(settings.output_dir) / filename
+    file_path = (Path(settings.output_dir) / filename).resolve()
+    if not file_path.is_relative_to(Path(settings.output_dir).resolve()):
+        raise HTTPException(status_code=400, detail="Invalid filename")
     if file_path.exists():
         os.unlink(file_path)
 
@@ -158,9 +166,11 @@ async def merge_files(req: MergeRequest):
     input_files = []
 
     for fname in req.filenames:
-        if "/" in fname or "\\" in fname or ".." in fname:
+        if "/" in fname or "\\" in fname:
             raise HTTPException(status_code=400, detail=f"Invalid filename: {fname}")
-        fpath = output_dir / fname
+        fpath = (output_dir / fname).resolve()
+        if not fpath.is_relative_to(output_dir.resolve()):
+            raise HTTPException(status_code=400, detail=f"Invalid filename: {fname}")
         if not fpath.exists():
             raise HTTPException(status_code=404, detail=f"File not found: {fname}")
         input_files.append(str(fpath))
