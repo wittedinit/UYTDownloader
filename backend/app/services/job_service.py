@@ -263,8 +263,10 @@ def execute_stage(job_id: str, stage_id: str, task=None) -> dict:
         if not job or not stage:
             return {"status": "failed", "error": "Job or stage not found"}
 
-        # Mark running
+        # Mark running — clear any previous error from failed attempts
         job.status = JobStatus.RUNNING
+        job.error_message = None
+        job.error_code = None
         stage.status = StageStatus.RUNNING
         stage.started_at = datetime.now(timezone.utc)
         session.commit()
@@ -331,9 +333,11 @@ def _dispatch_next_stage(session: Session, job: Job):
         job.celery_task_id = celery_result.id
         session.commit()
     else:
-        # All stages done
+        # All stages done — clear any leftover error from retried stages
         job.status = JobStatus.COMPLETED
         job.progress_pct = 100.0
+        job.error_message = None
+        job.error_code = None
         session.commit()
 
 

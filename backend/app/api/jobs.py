@@ -73,7 +73,12 @@ async def create_jobs(req: JobCreateRequest):
             ).scalar_one_or_none()
 
             if first_stage:
-                celery_result = run_stage.delay(job_id, str(first_stage.id))
+                try:
+                    celery_result = run_stage.delay(job_id, str(first_stage.id))
+                except Exception:
+                    from app.celery_app import celery as celery_app_instance
+                    celery_app_instance.close()
+                    celery_result = run_stage.delay(job_id, str(first_stage.id))
                 # Update job with celery task id
                 from app.models.job import Job as JobModel
                 job = session.get(JobModel, uuid.UUID(job_id))
@@ -220,49 +225,65 @@ async def cancel_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/{job_id}/retry", response_model=JobOut)
-async def retry_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def retry_job(job_id: uuid.UUID):
     """Retry a failed job from the first failed or pending stage."""
-    result = await db.execute(
-        select(Job).where(Job.id == job_id).options(
-            selectinload(Job.entry),
-            selectinload(Job.stages),
+    import asyncio
+    from app.services.job_service import _get_sync_session
+
+    def _do_retry():
+        session = _get_sync_session()
+        job = session.execute(
+            select(Job).where(Job.id == job_id).options(
+                selectinload(Job.entry),
+                selectinload(Job.stages),
+            )
+        ).scalar_one_or_none()
+        if not job:
+            return None, "Job not found"
+        if job.status != JobStatus.FAILED:
+            return None, "Only failed jobs can be retried"
+
+        # Reset failed stages to pending
+        for stage in job.stages:
+            if stage.status == StageStatus.FAILED:
+                stage.status = StageStatus.PENDING
+                stage.error_message = None
+                stage.started_at = None
+                stage.finished_at = None
+
+        job.status = JobStatus.QUEUED
+        job.error_code = None
+        job.error_message = None
+        job.progress_pct = 0.0
+        job.speed_bps = None
+        job.eta_seconds = None
+        session.flush()
+
+        # Dispatch first pending stage
+        first_pending = sorted(
+            [s for s in job.stages if s.status == StageStatus.PENDING],
+            key=lambda s: s.order,
         )
-    )
-    job = result.scalar_one_or_none()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        if first_pending:
+            from app.worker.tasks import run_stage
+            try:
+                celery_result = run_stage.delay(str(job.id), str(first_pending[0].id))
+            except Exception:
+                from app.celery_app import celery as celery_app_instance
+                celery_app_instance.close()
+                celery_result = run_stage.delay(str(job.id), str(first_pending[0].id))
+            job.celery_task_id = celery_result.id
 
-    if job.status != JobStatus.FAILED:
-        raise HTTPException(status_code=409, detail="Only failed jobs can be retried")
+        session.commit()
+        out = _job_to_out(job)
+        session.close()
+        return out, None
 
-    # Reset failed stages to pending
-    for stage in job.stages:
-        if stage.status == StageStatus.FAILED:
-            stage.status = StageStatus.PENDING
-            stage.error_message = None
-            stage.started_at = None
-            stage.finished_at = None
-
-    job.status = JobStatus.QUEUED
-    job.error_code = None
-    job.error_message = None
-    job.progress_pct = 0.0
-    job.speed_bps = None
-    job.eta_seconds = None
-    await db.flush()
-
-    # Dispatch first pending stage
-    first_pending = sorted(
-        [s for s in job.stages if s.status == StageStatus.PENDING],
-        key=lambda s: s.order,
-    )
-    if first_pending:
-        from app.worker.tasks import run_stage
-        celery_result = run_stage.delay(str(job.id), str(first_pending[0].id))
-        job.celery_task_id = celery_result.id
-        await db.flush()
-
-    return _job_to_out(job)
+    result, error = await asyncio.to_thread(_do_retry)
+    if error:
+        status = 404 if "not found" in error else 409
+        raise HTTPException(status_code=status, detail=error)
+    return result
 
 
 @router.delete("/{job_id}", status_code=204)
