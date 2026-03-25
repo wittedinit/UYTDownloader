@@ -76,12 +76,12 @@ export default function JobsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {["", "queued", "running", "completed", "failed"].map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className={`px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
+            className={`px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm rounded-lg font-medium transition-colors touch-manipulation ${
               filter === s
                 ? "bg-indigo-600 text-white"
                 : "bg-[var(--card)] border border-[var(--card-border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--muted)]"
