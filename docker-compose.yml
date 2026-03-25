@@ -42,6 +42,8 @@ services:
       - UYT_CONFIG_DIR=/config
       - UYT_OUTPUT_DIR=/downloads
       - UYT_WORK_DIR=/work
+      - UYT_CONCURRENCY_MODE=${UYT_CONCURRENCY_MODE:-balanced}
+      - UYT_SPONSORBLOCK_DEFAULT=${UYT_SPONSORBLOCK_DEFAULT:-keep}
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - TZ=${TZ:-UTC}
@@ -68,6 +70,7 @@ services:
       - UYT_OUTPUT_DIR=/downloads
       - UYT_WORK_DIR=/work
       - UYT_CONCURRENCY_MODE=${UYT_CONCURRENCY_MODE:-balanced}
+      - UYT_SPONSORBLOCK_DEFAULT=${UYT_SPONSORBLOCK_DEFAULT:-keep}
       - UYT_RETENTION=${UYT_RETENTION:-forever}
       - UYT_DISK_GUARD_PCT=${UYT_DISK_GUARD_PCT:-10}
       - UYT_DISK_GUARD_STRATEGY=${UYT_DISK_GUARD_STRATEGY:-oldest_first}

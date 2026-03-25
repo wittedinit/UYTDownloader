@@ -14,12 +14,14 @@ if [ "$(id -u)" = "0" ]; then
     chown -R "$PUID:$PGID" /config /downloads /work
 
     # Run migrations as app user
-    PYTHONPATH=/app gosu appuser alembic upgrade head 2>/dev/null || echo "Migration skipped (DB may not be ready yet)"
+    echo "Running database migrations..."
+    PYTHONPATH=/app gosu appuser alembic upgrade head || { echo "ERROR: Migration failed!"; exit 1; }
 
     # Start as app user
     exec gosu appuser uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 else
     mkdir -p /config/logs/jobs /config/cookies /downloads /work/incomplete /work/staging
-    PYTHONPATH=/app alembic upgrade head 2>/dev/null || echo "Migration skipped"
+    echo "Running database migrations..."
+    PYTHONPATH=/app alembic upgrade head || { echo "ERROR: Migration failed!"; exit 1; }
     exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 fi
