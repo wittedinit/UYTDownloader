@@ -19,6 +19,7 @@ from app.models.job import Job, JobRequest, JobStage
 from app.models.artifact import Artifact
 from app.models.archive import ArchiveRecord
 from app.models.subscription import Subscription, SubscriptionFilter
+from app.models.transcript import Transcript
 
 __all__ = [
     "Base",
@@ -43,4 +44,5 @@ __all__ = [
     "ArchiveRecord",
     "Subscription",
     "SubscriptionFilter",
+    "Transcript",
 ]

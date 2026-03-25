@@ -906,9 +906,67 @@ def _handle_finalize(session: Session, job: Job, stage: JobStage, task) -> dict:
 
     session.flush()
 
+    # Index transcript (best-effort, don't fail the job if this fails)
+    try:
+        _index_transcript_for_entry(session, entry)
+    except Exception as exc:
+        logger.warning("Transcript indexing failed for %s: %s", entry.external_video_id, exc)
+
     return {
         "final_path": str(dest),
         "filename": dest.name,
         "size_bytes": final_artifact.size_bytes,
         "checksum": final_artifact.checksum_sha256,
     }
+
+
+def _index_transcript_for_entry(session: Session, entry) -> None:
+    """Fetch and index transcript/subtitles for a completed download."""
+    from app.services.transcript_service import index_transcript
+    from app.worker.ytdlp_wrapper import YtdlpWrapper
+
+    video_id = entry.external_video_id
+    if not video_id:
+        return
+
+    cookie_path = settings.cookie_path
+    wrapper = YtdlpWrapper(
+        cookie_file=str(cookie_path) if cookie_path else None,
+        concurrency_mode="safe",  # Minimal impact
+    )
+
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        from yt_dlp import YoutubeDL
+        opts = {
+            **wrapper._base_opts(),
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": ["en", "en-US", "en-GB"],
+            "subtitlesformat": "json3",
+            "skip_download": True,
+            "quiet": True,
+        }
+        with YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if not info:
+                return
+
+        from app.services.transcript_service import extract_subtitles_from_info
+        language, content = extract_subtitles_from_info(info)
+
+        if content and len(content) > 10:
+            title = entry.title or info.get("title", "")
+            channel = info.get("uploader", "") or info.get("channel", "")
+            index_transcript(
+                session=session,
+                video_id=video_id,
+                title=title,
+                channel=channel,
+                language=language,
+                content=content,
+                entry_id=str(entry.id),
+            )
+            logger.info("Indexed transcript for %s (%d chars)", video_id, len(content))
+    except Exception as exc:
+        logger.warning("Could not fetch subtitles for %s: %s", video_id, exc)
