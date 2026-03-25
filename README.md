@@ -14,6 +14,14 @@ Self-hosted Ultimate YouTube download orchestration tool. Built around yt-dlp, f
 - **Subtitle embedding** and **audio normalization** (EBU R128 two-pass) as optional post-processing stages
 - **Real-time progress** — live percentage and speed displayed during downloads
 - **Archive/dedup** — tracks downloads to prevent re-downloading the same content
+- **Reset** — clear current probe results and start fresh without reloading the page
+
+### Jobs
+- **Real-time monitoring** — progress bars, speed, ETA for active downloads
+- **Download artifacts** — completed jobs show download links for their output files
+- **Cancel / Retry / Delete** — single job or bulk actions
+- **Bulk retry** — retry all failed jobs at once with one click
+- **Source file tracking** — jobs show when their output file has been deleted from the library
 
 ### Merge & Compile
 - **Download & Merge** — download multiple playlist/channel entries and merge into one file with chapter markers
@@ -133,11 +141,12 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 | Page | URL | Purpose |
 |------|-----|---------|
-| **Download** | `/` | Probe URLs, select entries, configure quality/format, download or merge |
-| **Jobs** | `/jobs` | Monitor progress, cancel, retry, delete job history |
-| **Library** | `/library` | Browse files, download individually or as zip, merge, delete |
+| **Download** | `/` | Probe URLs, select entries, configure quality/format, download or merge. Reset button to clear and start fresh. |
+| **Jobs** | `/jobs` | Monitor progress, download completed artifacts, cancel, retry (single or bulk), delete. Bulk retry all failed jobs. |
+| **Library** | `/library` | Browse files, download individually or as zip, merge, delete (single or bulk) |
 | **Subscriptions** | `/subscriptions` | Manage auto-download subscriptions with filters |
-| **Settings** | `/settings` | Disk usage, retention policy, disk guard, system health |
+| **Settings** | `/settings` | Download policy mode (safe/balanced/power), disk usage, retention policy, disk guard, system health |
+| **Manual** | `/manual` | Comprehensive searchable user guide with quick-start Q&As |
 
 ---
 
@@ -201,6 +210,7 @@ POST /api/jobs/{job_id}/cancel          Cancel a job
 POST /api/jobs/{job_id}/retry           Retry a failed job
 DELETE /api/jobs/{job_id}               Delete job from history
 POST /api/jobs/bulk-delete              Delete multiple jobs
+POST /api/jobs/bulk-retry               Retry all failed jobs
 ```
 
 ### Sources & Entries
