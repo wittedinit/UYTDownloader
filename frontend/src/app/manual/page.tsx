@@ -47,6 +47,18 @@ const FAQS: FAQ[] = [
     q: "How do I free up disk space?",
     a: "Go to Settings. You can set a Retention Policy to auto-delete old files, or use the Disk Space Guard to automatically clean up when free space gets low. You can also manually delete files from the Library page.",
   },
+  {
+    q: "How do I search inside downloaded videos?",
+    a: "Go to the Search page. UYTDownloader automatically indexes YouTube subtitles and auto-captions when you download a video. You can search by keyword and results are ranked by relevance, with matching context snippets highlighted.",
+  },
+  {
+    q: "What are Quick Presets?",
+    a: "Quick Presets are one-click workflow templates on the Download page. Choose from Best Quality, Background Listen, Archive, Mobile, or Podcast — each pre-fills format, quality, SponsorBlock, subtitle, normalization, and output format settings. You can fine-tune any option after selecting a preset.",
+  },
+  {
+    q: "Is there a browser extension?",
+    a: "Yes! A Chrome extension is included in the /extension directory. Load it as an unpacked extension in chrome://extensions. It adds a 'UYT' button to YouTube's action bar so you can send videos to your server with one click.",
+  },
 ];
 
 const SECTIONS: Section[] = [
@@ -125,6 +137,28 @@ const SECTIONS: Section[] = [
 - **Normalize audio** — adjusts loudness to a consistent level (EBU R128 standard, -16 LUFS)`,
       },
       {
+        id: "download-presets",
+        title: "Quick Presets",
+        body: `One-click workflow templates that pre-fill all download options. Select a preset, then fine-tune any individual setting before downloading.
+
+**Best Quality:**
+- Video + Audio, Best Available resolution, Original format (no re-encode), SponsorBlock: Mark as Chapters, Embed subtitles on, Normalize audio off
+
+**Background Listen:**
+- Audio Only, 192 kbps, Original format, SponsorBlock: Remove Sponsors, Subtitles off, Normalize audio on
+
+**Archive:**
+- Video + Audio, Best Available resolution, MKV / H.264, SponsorBlock: Keep All, Embed subtitles on, Normalize audio off
+
+**Mobile:**
+- Video + Audio, 720p, MP4 / H.264, SponsorBlock: Remove Sponsors, Subtitles off, Normalize audio on
+
+**Podcast:**
+- Audio Only, 128 kbps, Original format, SponsorBlock: Remove Sponsors, Subtitles off, Normalize audio on
+
+**Tip:** After selecting a preset, all options are unlocked for fine-tuning. The preset just gives you a starting point.`,
+      },
+      {
         id: "download-selecting",
         title: "Selecting and Reordering",
         body: `**Selecting entries:**
@@ -153,6 +187,9 @@ const SECTIONS: Section[] = [
 - Chapter markers are added at each video boundary
 - The merged file title defaults to the playlist/channel name
 - Uses the merge order from the entry list (drag to reorder)
+
+**Reset button:**
+- Clears probe results and starts fresh — useful when you want to probe a different URL or clear stale metadata
 
 **Subscribe button (purple, on source card):**
 - Only appears for playlists and channels (not single videos)
@@ -210,6 +247,15 @@ Stop a running or queued job. The worker will terminate the download.
 **Retry:**
 Re-run a failed job from the point of failure. Only available for failed jobs.
 
+**Bulk Retry:**
+Select multiple failed jobs using checkboxes and click "Retry N jobs" to re-queue them all at once.
+
+**Download Artifacts:**
+Completed jobs show download links for their output files directly in the job card. Click to download the finished file without navigating to the Library.
+
+**Source File Tracking:**
+If a completed job's output file was later deleted from the Library, the job card indicates the file is no longer available on disk.
+
 **Delete:**
 Remove a job from history. Use the checkbox + "Delete N jobs" for bulk deletion, or the Delete button on individual jobs. Running jobs must be cancelled before deletion.
 
@@ -234,7 +280,19 @@ Check all visible jobs for bulk operations.`,
 - File size
 - Date modified
 
-Files are sorted by most recent first.`,
+**Search bar:**
+Type to filter files by name. Search is debounced and case-insensitive — results update as you type.
+
+**Type filter:**
+Filter files by type using the pills: **All**, **Video**, or **Audio**.
+
+**Sort options:**
+- **Newest** — most recently modified first (default)
+- **Oldest** — oldest files first
+- **Name A-Z** — alphabetical
+- **Name Z-A** — reverse alphabetical
+- **Largest** — biggest files first
+- **Smallest** — smallest files first`,
       },
       {
         id: "library-download",
@@ -276,6 +334,59 @@ Click the red **Delete** button on any file. A confirmation prompt appears.
 3. Confirm the deletion
 
 Deleted files are permanently removed from the server's downloads folder.`,
+      },
+    ],
+  },
+  {
+    id: "search",
+    title: "Search",
+    icon: "M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z",
+    content: [
+      {
+        id: "search-how",
+        title: "How Transcript Search Works",
+        body: `UYTDownloader automatically indexes YouTube subtitles and auto-captions when you download a video.
+
+**Indexing pipeline:**
+- When a download completes, the system fetches the video's subtitle tracks from YouTube
+- English subtitles are preferred; if unavailable, it falls back to auto-generated captions
+- The transcript text is stored in PostgreSQL with full-text search indexing
+- Search ranking is weighted: title matches rank highest, then channel name, then transcript content
+
+**Coverage:**
+- Approximately 95% of English-language YouTube content has subtitles or auto-captions available
+- Videos without any captions are not indexed and won't appear in search results`,
+      },
+      {
+        id: "search-using",
+        title: "Searching",
+        body: `**How to search:**
+1. Go to the Search page
+2. Type your query into the search box
+3. Results are ranked by relevance using PostgreSQL full-text search
+
+**Results display:**
+- Each result shows the video title, channel name, and a context snippet
+- Matching terms are highlighted in the snippet so you can see exactly where your query appears
+- Click a result to navigate to the file in the Library`,
+      },
+      {
+        id: "search-indexed",
+        title: "What Gets Indexed",
+        body: `**Subtitle sources (in priority order):**
+1. **English subtitles** — human-written captions uploaded by the creator
+2. **Auto-generated captions** — YouTube's automatic speech recognition (ASR)
+
+**Coverage notes:**
+- ~95% of English-language YouTube content has at least auto-captions
+- Non-English content may have lower coverage depending on language support
+- Videos without any subtitle track (captions disabled, no ASR available) are not indexed
+- Live streams may not have captions available at download time
+
+**What is stored:**
+- Full transcript text (all subtitle cues concatenated)
+- Video title and channel name (also searchable)
+- Timestamps are not currently stored — search finds the video, not the exact moment`,
       },
     ],
   },
@@ -332,6 +443,22 @@ Multiple filters can be combined. All enabled filters must pass for a video to b
     title: "Settings",
     icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
     content: [
+      {
+        id: "settings-policy",
+        title: "Download Policy Mode",
+        body: `The download policy mode can now be changed directly from the Settings UI — no need to set the \`UYT_CONCURRENCY_MODE\` environment variable manually.
+
+**Safe:**
+- Most conservative. 1 concurrent fragment, long sleeps between requests and downloads. Best for shared IPs, VPNs, or recovering from throttling.
+
+**Balanced (default):**
+- Good speed without attracting attention. 3 concurrent fragments, moderate request pacing. Recommended for most users.
+
+**Power:**
+- Maximum speed. 5 concurrent fragments, no sleep between requests. Higher risk of temporary throttling — use for quick bursts only.
+
+Changing the mode takes effect immediately for new downloads. Running downloads keep their original policy.`,
+      },
       {
         id: "settings-disk",
         title: "Disk Usage",
@@ -419,6 +546,14 @@ All values should show green. If any show red, the corresponding service may nee
 4. Place the exported file inside your config volume at: \`cookies/youtube.txt\` (the full path depends on where you mapped the /config volume — e.g., \`./config/cookies/youtube.txt\` for Docker Compose)
 5. Restart the backend and worker containers
 
+**Alternative: yt-dlp command method:**
+If you have yt-dlp installed locally, you can export cookies directly from your browser:
+\`yt-dlp --cookies-from-browser chrome --cookies ./config/cookies/youtube.txt --skip-download "https://www.youtube.com"\`
+This reads Chrome's cookie store and writes a Netscape-format cookie file in one step.
+
+**Cookie expiry:**
+YouTube cookies expire periodically (typically every few months). If age-gated or member-only downloads start failing, re-export your cookies. The health check will still show "cookies: present" even if the cookies have expired — it only checks that the file exists.
+
 The health check will show "cookies: present" when configured correctly.`,
       },
       {
@@ -496,6 +631,28 @@ The Settings page shows which GPU (if any) was detected.`,
 - \`GET /health\` — system health check
 
 See the README for the full API reference with 30 endpoints.`,
+      },
+      {
+        id: "advanced-extension",
+        title: "Browser Extension",
+        body: `A Chrome extension is included in the \`/extension\` directory for sending YouTube videos to UYTDownloader with one click.
+
+**Installation:**
+1. Open \`chrome://extensions\` in Chrome
+2. Enable **Developer mode** (toggle in the top-right corner)
+3. Click **Load unpacked** and select the \`/extension\` directory from the project
+4. The UYT extension icon appears in your toolbar
+
+**Popup (click the extension icon):**
+- Configure your UYTDownloader server URL (e.g., \`http://192.168.1.100:3000\`)
+- Click **Send** to send the current YouTube page URL to your server for download
+
+**Content script (on YouTube pages):**
+- A **UYT** button is added to YouTube's video action bar (next to Like, Share, etc.)
+- Click it to send the current video URL to your server with one click
+- The web UI opens automatically with the URL pre-filled, ready for probing
+
+**Tip:** Make sure your server URL is accessible from the browser — if you're running UYTDownloader on a different machine, use the LAN IP, not localhost.`,
       },
     ],
   },
