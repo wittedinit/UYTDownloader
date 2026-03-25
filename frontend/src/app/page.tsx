@@ -260,6 +260,26 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Quick workflow templates */}
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 mb-4">
+            <h3 className="text-xs font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">Quick Presets</h3>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "Best Quality", desc: "Video+Audio, best, keep sponsors", fm: "video_audio", q: "best", sb: "keep", subs: false, norm: false, of: "original", vb: "auto" },
+                { label: "Background Listen", desc: "Audio only, no sponsors, normalized", fm: "audio_only", q: "audio_192k", sb: "remove", subs: false, norm: true, of: "mp3", vb: "auto" },
+                { label: "Archive", desc: "Best video+audio, keep all, embed subs", fm: "video_audio", q: "best", sb: "mark_chapters", subs: true, norm: false, of: "original", vb: "auto" },
+                { label: "Mobile", desc: "720p video, small size", fm: "video_audio", q: "720p", sb: "remove", subs: false, norm: false, of: "mp4_h264", vb: "3000" },
+                { label: "Podcast", desc: "Audio 128k, no sponsors, normalized", fm: "audio_only", q: "audio_128k", sb: "remove", subs: false, norm: true, of: "mp3", vb: "auto" },
+              ].map((t) => (
+                <button key={t.label} title={t.desc}
+                  onClick={() => { setFormatMode(t.fm); setQuality(t.q); setSponsorblock(t.sb); setEmbedSubs(t.subs); setNormalizeAudio(t.norm); setOutputFormat(t.of); setVideoBitrate(t.vb); }}
+                  className="px-3 py-1.5 text-xs font-medium bg-[var(--background)] border border-[var(--card-border)] rounded-lg hover:border-indigo-500/50 hover:text-indigo-400 transition-colors touch-manipulation">
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Options card */}
           <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-5 mb-6">
             <h3 className="text-xs font-medium text-[var(--muted)] mb-4 uppercase tracking-wider">Download Options</h3>
