@@ -68,7 +68,7 @@ GPU is used only when re-encoding is needed (SponsorBlock removal, audio normali
 ```bash
 git clone https://github.com/wittedinit/UYTDownloader.git
 cd UYTDownloader
-cp .env.example .env    # Edit settings if needed
+cp .env.default .env    # Edit settings if needed
 docker compose up -d
 ```
 
