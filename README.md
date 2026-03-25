@@ -109,7 +109,7 @@ Search for **UYTDownloader** in the Apps tab and click Install. Then configure:
 | `PUID` | `1000` | `99` (Unraid nobody user) |
 | `PGID` | `1000` | `100` (Unraid users group) |
 | `TZ` | `UTC` | Your timezone, e.g., `Europe/London` |
-| `UYT_CONCURRENCY_MODE` | `balanced` | Download policy: `safe` (1 fragment, 1.5s sleep), `balanced` (3 fragments, 0.5s sleep), `power` (5 fragments, no sleep) |
+| `UYT_CONCURRENCY_MODE` | `balanced` | Download policy: `safe` (1 worker, 1 fragment, sleeps), `balanced` (3 workers, 3 fragments, light sleeps), `power` (6 workers, 5 fragments, no sleep) |
 | `UYT_RETENTION` | `forever` | Auto-delete period: `1_week`, `1_month`, `1_year`, `forever` |
 | `UYT_DISK_GUARD_PCT` | `10` | Min free disk % before auto-cleanup starts |
 | `UYT_DISK_GUARD_STRATEGY` | `oldest_first` | `oldest_first`, `newest_first`, `largest_first`, `smallest_first` |

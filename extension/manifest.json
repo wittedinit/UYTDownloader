@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "description": "Send YouTube videos, playlists, and channels to your UYTDownloader instance",
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["*://*.youtube.com/*"],
+  "host_permissions": ["*://*.youtube.com/*", "http://*/*", "https://*/*"],
   "icons": {
     "48": "icon-48.png",
     "128": "icon-128.png"

@@ -133,15 +133,16 @@ export default function SearchPage() {
                     YouTube
                   </a>
                 </div>
-                {/* Snippet with highlights */}
-                <p
-                  className="text-sm text-[var(--muted)] leading-relaxed"
-                  dangerouslySetInnerHTML={{
-                    __html: r.snippet
-                      .replace(/\*\*/g, (_, i) => (i % 2 === 0 ? '<mark class="bg-indigo-500/20 text-indigo-300 px-0.5 rounded">' : "</mark>"))
-                      .replace(/\*\*([^*]+)\*\*/g, '<mark class="bg-indigo-500/20 text-indigo-300 px-0.5 rounded">$1</mark>'),
-                  }}
-                />
+                {/* Snippet with highlights — safe rendering (no dangerouslySetInnerHTML) */}
+                <p className="text-sm text-[var(--muted)] leading-relaxed">
+                  {r.snippet.split(/\*\*/).map((part, i) =>
+                    i % 2 === 1 ? (
+                      <mark key={i} className="bg-indigo-500/20 text-indigo-300 px-0.5 rounded">{part}</mark>
+                    ) : (
+                      <span key={i}>{part}</span>
+                    )
+                  )}
+                </p>
               </div>
             ))}
           </div>
