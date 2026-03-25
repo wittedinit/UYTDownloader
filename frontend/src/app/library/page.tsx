@@ -1,23 +1,39 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { listLibraryFiles, deleteLibraryFile, mergeLibraryFiles, getMergeStatus, createZip, deleteZip, resolveApiBase, type LibraryFile } from "@/lib/api";
 
 export default function LibraryPage() {
   const [files, setFiles] = useState<LibraryFile[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [merging, setMerging] = useState(false);
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [zipping, setZipping] = useState(false);
+  // Search, sort, filter
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("date_desc");
+  const [fileType, setFileType] = useState("all");
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiBase = resolveApiBase();
 
-  const fetchFiles = useCallback(async () => {
-    try { const res = await listLibraryFiles(); setFiles(res.files); }
-    catch {} finally { setLoading(false); }
-  }, []);
+  const fetchFiles = useCallback(async (s?: string) => {
+    try {
+      const res = await listLibraryFiles({ search: s ?? search, sort, file_type: fileType });
+      setFiles(res.files);
+      setTotal(res.total);
+    } catch {} finally { setLoading(false); }
+  }, [search, sort, fileType]);
 
   useEffect(() => { fetchFiles(); }, [fetchFiles]);
+
+  // Debounced search
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => fetchFiles(val), 300);
+  };
 
   const toggleFile = (f: string) => setSelected((prev) => { const n = new Set(prev); if (n.has(f)) n.delete(f); else n.add(f); return n; });
   const toggleAll = () => { if (selected.size === files.length) setSelected(new Set()); else setSelected(new Set(files.map((f) => f.filename))); };
@@ -40,6 +56,7 @@ export default function LibraryPage() {
   };
 
   const formatBytes = (b: number) => {
+    if (b == null) return "-";
     if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
     if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
     return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
@@ -48,8 +65,8 @@ export default function LibraryPage() {
   const formatDate = (ts: number) => new Date(ts * 1000).toLocaleString();
 
   const iconForExt = (ext: string) => {
-    if ([".mp4", ".mkv", ".webm", ".avi"].includes(ext)) return "video";
-    if ([".mp3", ".m4a", ".opus", ".ogg", ".webm"].includes(ext)) return "audio";
+    if ([".mp4", ".mkv", ".webm", ".avi", ".mov"].includes(ext)) return "video";
+    if ([".mp3", ".m4a", ".opus", ".ogg", ".flac", ".wav"].includes(ext)) return "audio";
     return "file";
   };
 
@@ -60,24 +77,70 @@ export default function LibraryPage() {
         <p className="text-sm text-[var(--muted)]">Browse and download completed files</p>
       </div>
 
+      {/* Search, Sort, Filter bar */}
+      <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 mb-4 flex flex-wrap gap-3 items-center">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search files..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:border-indigo-500/50 transition-colors"
+          />
+          {search && (
+            <button onClick={() => { setSearch(""); fetchFiles(""); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)]">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Type filter */}
+        <select value={fileType} onChange={(e) => setFileType(e.target.value)}
+          className="px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:border-indigo-500/50">
+          <option value="all">All Types</option>
+          <option value="video">Video</option>
+          <option value="audio">Audio</option>
+        </select>
+
+        {/* Sort */}
+        <select value={sort} onChange={(e) => setSort(e.target.value)}
+          className="px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:border-indigo-500/50">
+          <option value="date_desc">Newest First</option>
+          <option value="date_asc">Oldest First</option>
+          <option value="name_asc">Name A-Z</option>
+          <option value="name_desc">Name Z-A</option>
+          <option value="size_desc">Largest First</option>
+          <option value="size_asc">Smallest First</option>
+        </select>
+      </div>
+
       {loading ? (
         <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center text-[var(--muted)]">Loading...</div>
       ) : files.length === 0 ? (
-        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center text-[var(--muted)]">No downloads yet</div>
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center text-[var(--muted)]">
+          {search || fileType !== "all" ? `No files matching "${search}"${fileType !== "all" ? ` (${fileType})` : ""}` : "No downloads yet"}
+        </div>
       ) : (
         <>
           {/* Stats bar */}
-          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-4">
               <button onClick={toggleAll} className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
                 {selected.size === files.length ? "Deselect All" : "Select All"}
               </button>
               <span className="text-sm text-[var(--muted)]">{selected.size} selected</span>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-[var(--muted)]">{files.length} files &middot; {formatBytes(files.reduce((s, f) => s + f.size_bytes, 0))}</span>
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className="text-sm text-[var(--muted)]">{total} files &middot; {formatBytes(files.reduce((s, f) => s + f.size_bytes, 0))}</span>
               {selected.size > 0 && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button onClick={() => setShowDownloadDialog(true)}
                     className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-green-700 transition-all">
                     Download {selected.size}
@@ -90,34 +153,16 @@ export default function LibraryPage() {
                         const hasVideo = Array.from(selected).some((f) => f.endsWith(".mp4") || f.endsWith(".mkv") || f.endsWith(".webm"));
                         setMerging(true);
                         try {
-                          const res = await mergeLibraryFiles({
-                            filenames: Array.from(selected),
-                            title,
-                            mode: hasVideo ? "video_chapters" : "audio_chapters",
-                          });
-                          // Poll for completion
+                          const res = await mergeLibraryFiles({ filenames: Array.from(selected), title, mode: hasVideo ? "video_chapters" : "audio_chapters" });
                           const taskId = res.task_id;
-                          const poll = async () => {
-                            for (let i = 0; i < 600; i++) {
-                              await new Promise((r) => setTimeout(r, 2000));
-                              const status = await getMergeStatus(taskId);
-                              if (status.status === "completed") {
-                                setSelected(new Set());
-                                fetchFiles();
-                                setMerging(false);
-                                return;
-                              }
-                              if (status.status === "failed") {
-                                throw new Error(status.error || "Merge failed");
-                              }
-                            }
-                            throw new Error("Merge timed out");
-                          };
-                          await poll();
-                        } catch (e) {
-                          alert(e instanceof Error ? e.message : "Merge failed");
-                          setMerging(false);
-                        }
+                          for (let i = 0; i < 600; i++) {
+                            await new Promise((r) => setTimeout(r, 2000));
+                            const status = await getMergeStatus(taskId);
+                            if (status.status === "completed") { setSelected(new Set()); fetchFiles(); setMerging(false); return; }
+                            if (status.status === "failed") throw new Error(status.error || "Merge failed");
+                          }
+                          throw new Error("Merge timed out");
+                        } catch (e) { alert(e instanceof Error ? e.message : "Merge failed"); setMerging(false); }
                       }}
                       className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-sm font-medium hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 transition-all">
                       {merging ? "Merging..." : `Merge ${selected.size}`}
@@ -126,11 +171,10 @@ export default function LibraryPage() {
                   <button onClick={async () => {
                     if (!confirm(`Delete ${selected.size} file${selected.size !== 1 ? "s" : ""}?`)) return;
                     for (const f of selected) { try { await deleteLibraryFile(f); } catch {} }
-                    setSelected(new Set());
-                    fetchFiles();
+                    setSelected(new Set()); fetchFiles();
                   }}
                     className="px-4 py-2 border border-red-500/30 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/10 transition-colors">
-                    Delete {selected.size} file{selected.size !== 1 ? "s" : ""}
+                    Delete {selected.size}
                   </button>
                 </div>
               )}
@@ -187,61 +231,31 @@ export default function LibraryPage() {
             <p className="text-sm text-[var(--muted)] mb-6">
               Total: {formatBytes(files.filter((f) => selected.has(f.filename)).reduce((s, f) => s + f.size_bytes, 0))}
             </p>
-
             <div className="space-y-3">
-              {/* Individual downloads */}
-              <button
-                onClick={() => {
-                  handleDownloadSelected();
-                  setShowDownloadDialog(false);
-                }}
-                className="w-full p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl text-left hover:border-indigo-500/50 transition-colors group"
-              >
+              <button onClick={() => { handleDownloadSelected(); setShowDownloadDialog(false); }}
+                className="w-full p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl text-left hover:border-indigo-500/50 transition-colors group">
                 <p className="text-sm font-semibold group-hover:text-indigo-400 transition-colors">Download All Individually</p>
                 <p className="text-xs text-[var(--muted)] mt-1">Download each file separately to your browser&apos;s download folder</p>
               </button>
-
-              {/* Zip download */}
-              <button
-                disabled={zipping}
+              <button disabled={zipping}
                 onClick={async () => {
                   setZipping(true);
                   try {
-                    const res = await createZip({
-                      filenames: Array.from(selected),
-                      zip_name: `UYTDownloader_${selected.size}_files`,
-                    });
-                    // Trigger download
+                    const res = await createZip({ filenames: Array.from(selected), zip_name: `UYTDownloader_${selected.size}_files` });
                     const link = document.createElement("a");
                     link.href = `${apiBase}${res.download_url}`;
                     link.download = res.filename;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    // Delete zip after a delay (give browser time to start download)
-                    setTimeout(async () => {
-                      try { await deleteZip(res.filename); fetchFiles(); } catch {}
-                    }, 5000);
+                    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                    setTimeout(async () => { try { await deleteZip(res.filename); fetchFiles(); } catch {} }, 5000);
                     setShowDownloadDialog(false);
-                  } catch (e) {
-                    alert(e instanceof Error ? e.message : "Failed to create zip");
-                  } finally { setZipping(false); }
+                  } catch (e) { alert(e instanceof Error ? e.message : "Failed to create zip"); } finally { setZipping(false); }
                 }}
-                className="w-full p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl text-left hover:border-emerald-500/50 transition-colors group disabled:opacity-50"
-              >
-                <p className="text-sm font-semibold group-hover:text-emerald-400 transition-colors">
-                  {zipping ? "Creating zip..." : "Zip All & Download"}
-                </p>
-                <p className="text-xs text-[var(--muted)] mt-1">Bundle into a single ZIP file (stored, not compressed) and download. Zip is auto-deleted after download.</p>
+                className="w-full p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl text-left hover:border-emerald-500/50 transition-colors group disabled:opacity-50">
+                <p className="text-sm font-semibold group-hover:text-emerald-400 transition-colors">{zipping ? "Creating zip..." : "Zip All & Download"}</p>
+                <p className="text-xs text-[var(--muted)] mt-1">Bundle into a single ZIP file and download</p>
               </button>
-
-              {/* Cancel */}
-              <button
-                onClick={() => setShowDownloadDialog(false)}
-                className="w-full p-3 text-center text-sm text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
-              >
-                Cancel
-              </button>
+              <button onClick={() => setShowDownloadDialog(false)}
+                className="w-full p-3 text-center text-sm text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">Cancel</button>
             </div>
           </div>
         </div>

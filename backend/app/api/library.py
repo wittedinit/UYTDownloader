@@ -19,23 +19,55 @@ router = APIRouter(prefix="/api/library", tags=["library"])
 async def list_downloads(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    search: str = Query("", description="Filter files by name (case-insensitive)"),
+    sort: str = Query("date_desc", description="Sort: date_desc, date_asc, name_asc, name_desc, size_desc, size_asc"),
+    file_type: str = Query("all", description="Filter: all, video, audio"),
 ):
-    """List all files in the downloads directory."""
+    """List all files in the downloads directory with search, sort, and filter."""
     output_dir = Path(settings.output_dir)
     if not output_dir.exists():
-        return {"files": [], "total": 0}
+        return {"files": [], "total": 0, "page": page, "per_page": per_page}
+
+    VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".avi", ".mov", ".flv"}
+    AUDIO_EXTS = {".mp3", ".m4a", ".opus", ".ogg", ".flac", ".wav", ".aac"}
 
     all_files = []
-    for f in sorted(output_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
-        if f.is_file() and not f.name.startswith("."):
-            stat = f.stat()
-            all_files.append({
-                "filename": f.name,
-                "size_bytes": stat.st_size,
-                "modified_at": stat.st_mtime,
-                "download_url": f"/files/{f.name}",
-                "extension": f.suffix.lower(),
-            })
+    search_lower = search.lower()
+    for f in output_dir.iterdir():
+        if not f.is_file() or f.name.startswith("."):
+            continue
+        # Search filter
+        if search_lower and search_lower not in f.name.lower():
+            continue
+        # Type filter
+        ext = f.suffix.lower()
+        if file_type == "video" and ext not in VIDEO_EXTS:
+            continue
+        if file_type == "audio" and ext not in AUDIO_EXTS:
+            continue
+
+        stat = f.stat()
+        all_files.append({
+            "filename": f.name,
+            "size_bytes": stat.st_size,
+            "modified_at": stat.st_mtime,
+            "download_url": f"/files/{f.name}",
+            "extension": ext,
+        })
+
+    # Sort
+    if sort == "date_desc":
+        all_files.sort(key=lambda x: x["modified_at"], reverse=True)
+    elif sort == "date_asc":
+        all_files.sort(key=lambda x: x["modified_at"])
+    elif sort == "name_asc":
+        all_files.sort(key=lambda x: x["filename"].lower())
+    elif sort == "name_desc":
+        all_files.sort(key=lambda x: x["filename"].lower(), reverse=True)
+    elif sort == "size_desc":
+        all_files.sort(key=lambda x: x["size_bytes"], reverse=True)
+    elif sort == "size_asc":
+        all_files.sort(key=lambda x: x["size_bytes"])
 
     total = len(all_files)
     start = (page - 1) * per_page

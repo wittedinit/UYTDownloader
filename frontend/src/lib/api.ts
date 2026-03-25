@@ -314,9 +314,12 @@ export interface LibraryFile {
   extension: string;
 }
 
-export async function listLibraryFiles(page = 1) {
+export async function listLibraryFiles(opts: { page?: number; search?: string; sort?: string; file_type?: string } = {}) {
+  const { page = 1, search = "", sort = "date_desc", file_type = "all" } = opts;
+  const params = new URLSearchParams({ page: String(page), per_page: "200", sort, file_type });
+  if (search) params.set("search", search);
   return apiFetch<{ files: LibraryFile[]; total: number; page: number; per_page: number }>(
-    `/api/library?page=${page}&per_page=100`
+    `/api/library?${params}`
   );
 }
 

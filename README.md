@@ -119,7 +119,18 @@ Search for **UYTDownloader** in the Apps tab and click Install. Then configure:
 
 For age-gated or member-only content, export your YouTube cookies in Netscape format and place them inside your **config volume** at `cookies/youtube.txt`.
 
-The full path depends on where you mapped the `/config` volume:
+**How to export cookies:**
+
+Option 1 — **yt-dlp** (if installed on your host):
+```bash
+mkdir -p ./config/cookies
+yt-dlp --cookies-from-browser chrome --cookies ./config/cookies/youtube.txt --skip-download "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+```
+Replace `chrome` with `firefox`, `edge`, `safari`, `brave`, or `opera` depending on your browser. You must be logged into YouTube in that browser.
+
+Option 2 — **Browser extension**: Install "Get cookies.txt LOCALLY" (Chrome/Firefox), go to youtube.com while logged in, export cookies, and save the file as `youtube.txt`.
+
+**Where to put the file** depends on where you mapped the `/config` volume:
 
 | Deployment | Cookie file location |
 |-----------|---------------------|
@@ -127,7 +138,7 @@ The full path depends on where you mapped the `/config` volume:
 | Docker Compose | `./config/cookies/youtube.txt` (relative to docker-compose.yml) |
 | Custom | Wherever you mapped `/config` → put `cookies/youtube.txt` inside it |
 
-The health check at `/health` will show `cookies: present` when configured correctly.
+The health check at `/health` will show `cookies: present` when configured correctly. Cookies expire — if age-restricted downloads start failing, re-export fresh cookies.
 
 ### With NVIDIA GPU
 
