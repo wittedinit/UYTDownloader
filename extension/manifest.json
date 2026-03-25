@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "UYTDownloader",
+  "version": "0.2.0",
+  "description": "Send YouTube videos, playlists, and channels to your UYTDownloader instance",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["*://*.youtube.com/*"],
+  "icons": {
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon-48.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ]
+}

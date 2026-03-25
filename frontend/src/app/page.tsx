@@ -53,6 +53,14 @@ export default function Home() {
       if (saved.outputFormat) setOutputFormat(saved.outputFormat as string);
       if (saved.videoBitrate) setVideoBitrate(saved.videoBitrate as string);
     }
+    // Check for ?url= query param (from browser extension handoff)
+    const params = new URLSearchParams(window.location.search);
+    const extUrl = params.get("url");
+    if (extUrl) {
+      setUrl(extUrl);
+      // Clean the URL param without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
     setHydrated(true);
   }, []);
 
