@@ -63,13 +63,24 @@ GPU is used only when re-encoding is needed (SponsorBlock removal, audio normali
 
 ## Installation
 
-### Docker Compose (Recommended)
+### Docker Compose — Build Locally (Recommended)
 
 ```bash
 git clone https://github.com/wittedinit/UYTDownloader.git
 cd UYTDownloader
 cp .env.default .env    # Edit settings if needed
 docker compose up -d
+```
+
+### Docker Compose — Pre-built Images
+
+Skip the build step by using images from GitHub Container Registry:
+
+```bash
+git clone https://github.com/wittedinit/UYTDownloader.git
+cd UYTDownloader
+cp .env.default .env
+docker compose -f docker-compose.ghcr.yml up -d
 ```
 
 Open **http://your-server-ip:3000** in your browser.

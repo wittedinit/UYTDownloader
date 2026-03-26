@@ -81,7 +81,7 @@ export default function LibraryPage() {
       <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 mb-4 flex flex-wrap gap-3 items-center">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
           <input
@@ -94,7 +94,7 @@ export default function LibraryPage() {
           {search && (
             <button onClick={() => { setSearch(""); fetchFiles(""); }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)]">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -188,12 +188,13 @@ export default function LibraryPage() {
                 <label key={file.filename}
                   className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors ${selected.has(file.filename) ? "bg-indigo-500/5" : "hover:bg-[var(--background)]"}`}>
                   <input type="checkbox" checked={selected.has(file.filename)} onChange={() => toggleFile(file.filename)}
+                    aria-label={`Select ${file.filename}`}
                     className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500" />
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                     iconForExt(file.extension) === "video" ? "bg-blue-500/10" : iconForExt(file.extension) === "audio" ? "bg-purple-500/10" : "bg-slate-500/10"
                   }`}>
                     <svg className={`w-5 h-5 ${iconForExt(file.extension) === "video" ? "text-blue-400" : iconForExt(file.extension) === "audio" ? "text-purple-400" : "text-slate-400"}`}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       {iconForExt(file.extension) === "video" ? (
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9.75a2.25 2.25 0 002.25-2.25V7.5a2.25 2.25 0 00-2.25-2.25H4.5A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z" />
                       ) : (

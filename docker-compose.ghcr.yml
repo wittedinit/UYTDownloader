@@ -1,0 +1,129 @@
+# Pre-built images from GitHub Container Registry.
+# Use this instead of docker-compose.yml to skip local builds.
+# Usage: docker compose -f docker-compose.ghcr.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: uyt
+      POSTGRES_PASSWORD: uyt
+      POSTGRES_DB: uyt
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uyt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/wittedinit/uytdownloader-backend:latest
+    ports:
+      - "${UYT_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    environment:
+      - UYT_DATABASE_URL=postgresql+asyncpg://uyt:uyt@postgres:5432/uyt
+      - UYT_DATABASE_URL_SYNC=postgresql+psycopg2://uyt:uyt@postgres:5432/uyt
+      - UYT_REDIS_URL=redis://redis:6379/0
+      - UYT_CONFIG_DIR=/config
+      - UYT_OUTPUT_DIR=/downloads
+      - UYT_WORK_DIR=/work
+      - UYT_CONCURRENCY_MODE=${UYT_CONCURRENCY_MODE:-balanced}
+      - UYT_SPONSORBLOCK_DEFAULT=${UYT_SPONSORBLOCK_DEFAULT:-keep}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads
+      - ./work:/work
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/wittedinit/uytdownloader-worker:latest
+    environment:
+      - UYT_DATABASE_URL=postgresql+asyncpg://uyt:uyt@postgres:5432/uyt
+      - UYT_DATABASE_URL_SYNC=postgresql+psycopg2://uyt:uyt@postgres:5432/uyt
+      - UYT_REDIS_URL=redis://redis:6379/0
+      - UYT_CONFIG_DIR=/config
+      - UYT_OUTPUT_DIR=/downloads
+      - UYT_WORK_DIR=/work
+      - UYT_CONCURRENCY_MODE=${UYT_CONCURRENCY_MODE:-balanced}
+      - UYT_SPONSORBLOCK_DEFAULT=${UYT_SPONSORBLOCK_DEFAULT:-keep}
+      - UYT_RETENTION=${UYT_RETENTION:-forever}
+      - UYT_DISK_GUARD_PCT=${UYT_DISK_GUARD_PCT:-10}
+      - UYT_DISK_GUARD_STRATEGY=${UYT_DISK_GUARD_STRATEGY:-oldest_first}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-void}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,video,utility}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads
+      - ./work:/work
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # GPU passthrough: uncomment deploy section if NVIDIA GPU is available
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu, video]
+    restart: unless-stopped
+
+  beat:
+    image: ghcr.io/wittedinit/uytdownloader-worker:latest
+    entrypoint: ["tini", "--"]
+    command: ["celery", "-A", "app.celery_app:celery", "beat", "--loglevel=info"]
+    environment:
+      - UYT_DATABASE_URL=postgresql+asyncpg://uyt:uyt@postgres:5432/uyt
+      - UYT_DATABASE_URL_SYNC=postgresql+psycopg2://uyt:uyt@postgres:5432/uyt
+      - UYT_REDIS_URL=redis://redis:6379/0
+      - UYT_CONFIG_DIR=/config
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ./config:/config
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/wittedinit/uytdownloader-frontend:latest
+    ports:
+      - "${UYT_FRONTEND_PORT:-3000}:3000"
+    # Note: NEXT_PUBLIC_API_URL is baked at build time in Next.js.
+    # The frontend uses dynamic URL resolution via window.location at runtime.
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

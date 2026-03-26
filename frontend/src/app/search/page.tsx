@@ -69,7 +69,7 @@ export default function SearchPage() {
       <form onSubmit={handleSearch} className="mb-8">
         <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 flex gap-3">
           <div className="relative flex-1">
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
             <input
@@ -94,7 +94,7 @@ export default function SearchPage() {
       {/* Results */}
       {!searched && stats && stats.indexed_videos === 0 && (
         <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center">
-          <svg className="w-16 h-16 mx-auto mb-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+          <svg className="w-16 h-16 mx-auto mb-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
           <h2 className="text-lg font-semibold mb-2">No transcripts indexed yet</h2>

@@ -124,6 +124,7 @@ export default function JobsPage() {
             <div key={job.id} className={`bg-[var(--card)] border rounded-xl p-4 transition-colors hover:border-[var(--muted)] ${selected.has(job.id) ? "border-indigo-500/40 bg-indigo-500/5" : "border-[var(--card-border)]"}`}>
               <div className="flex items-center gap-4">
                 <input type="checkbox" checked={selected.has(job.id)} onChange={() => toggleJob(job.id)}
+                  aria-label={`Select job: ${job.entry_title || job.id}`}
                   className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500 flex-shrink-0" />
                 {job.entry_thumbnail && (
                   <img src={job.entry_thumbnail} alt="" className="w-20 h-12 rounded-lg object-cover flex-shrink-0" />
@@ -131,7 +132,7 @@ export default function JobsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{job.entry_title || job.id}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={`px-2 py-0.5 text-xs rounded-md font-medium ${STATUS_STYLES[job.status] || ""}`}>
+                    <span className={`px-2 py-0.5 text-xs rounded-md font-medium ${STATUS_STYLES[job.status] || ""}`} aria-label={`Status: ${job.status}`}>
                       {job.status}
                     </span>
                     {job.status === "running" && job.current_stage && (
@@ -153,7 +154,7 @@ export default function JobsPage() {
                     )}
                   </div>
                   {job.status === "running" && (
-                    <div className="mt-2 h-1.5 bg-[var(--background)] rounded-full overflow-hidden">
+                    <div className="mt-2 h-1.5 bg-[var(--background)] rounded-full overflow-hidden" role="progressbar" aria-label={`Download progress for ${job.entry_title || job.id}`} aria-valuenow={Math.round(job.total_stages > 0 ? Math.max(job.progress_pct, (job.completed_stages / job.total_stages) * 100) : job.progress_pct)} aria-valuemin={0} aria-valuemax={100}>
                       <div
                         className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500"
                         style={{ width: `${job.total_stages > 0 ? Math.max(job.progress_pct, (job.completed_stages / job.total_stages) * 100) : job.progress_pct}%` }}

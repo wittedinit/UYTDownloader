@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -14,7 +15,49 @@ from app.config import settings
 router = APIRouter(prefix="/api/library", tags=["library"])
 
 
-@router.get("")
+# ── Response Models ───────────────────────────────────────────────────
+
+
+class FileItem(BaseModel):
+    filename: str
+    size_bytes: int
+    modified_at: float
+    download_url: str
+    extension: str
+
+
+class ListDownloadsResponse(BaseModel):
+    files: list[FileItem]
+    total: int
+    page: int
+    per_page: int
+
+
+class CreateZipResponse(BaseModel):
+    filename: str
+    size_bytes: int
+    download_url: str
+    file_count: int
+
+
+class MergeResponse(BaseModel):
+    task_id: str
+    status: str
+    output_filename: str
+
+
+class MergeStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    progress: Optional[float] = None
+    stage: Optional[str] = None
+    error: Optional[str] = None
+    filename: Optional[str] = None
+    size_bytes: Optional[int] = None
+    download_url: Optional[str] = None
+
+
+@router.get("", response_model=ListDownloadsResponse)
 async def list_downloads(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
@@ -120,7 +163,7 @@ class ZipRequest(BaseModel):
     zip_name: str = "UYTDownloader_Export"
 
 
-@router.post("/zip")
+@router.post("/zip", response_model=CreateZipResponse)
 async def create_zip(req: ZipRequest):
     """Create a zip (store mode, no compression) of selected files for download."""
     import zipfile
@@ -187,7 +230,7 @@ class MergeRequest(BaseModel):
     normalize_audio: bool = False
 
 
-@router.post("/merge")
+@router.post("/merge", response_model=MergeResponse)
 async def merge_files(req: MergeRequest):
     """Queue a merge of multiple library files. Returns a task ID for polling."""
     if len(req.filenames) < 2:
@@ -225,7 +268,7 @@ async def merge_files(req: MergeRequest):
     return {"task_id": task.id, "status": "queued", "output_filename": os.path.basename(out_path)}
 
 
-@router.get("/merge/{task_id}")
+@router.get("/merge/{task_id}", response_model=MergeStatusResponse)
 async def get_merge_status(task_id: str):
     """Poll merge task status."""
     from app.celery_app import celery_app

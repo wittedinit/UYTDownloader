@@ -172,6 +172,7 @@ export default function Home() {
             placeholder="https://youtube.com/watch?v=... or playlist or channel URL"
             className="flex-1 px-4 py-3 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-[var(--muted)]"
             disabled={phase === "probing"}
+            aria-disabled={phase === "probing"}
           />
           <button
             onClick={handleProbe}
@@ -180,7 +181,7 @@ export default function Home() {
           >
             {phase === "probing" ? (
               <span className="flex items-center gap-2">
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                 Probing
               </span>
             ) : "Probe"}
@@ -215,7 +216,7 @@ export default function Home() {
       {/* Probing state */}
       {phase === "probing" && (
         <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center">
-          <div className="inline-block w-10 h-10 border-3 border-indigo-400/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
+          <div className="inline-block w-10 h-10 border-3 border-indigo-400/30 border-t-indigo-500 rounded-full animate-spin mb-4" role="status" aria-label="Extracting metadata" />
           <p className="text-[var(--muted)]">Extracting metadata...</p>
         </div>
       )}
@@ -350,7 +351,8 @@ export default function Home() {
                   <label className="block text-xs text-[var(--muted)] mb-1.5">Video Bitrate</label>
                   <select value={videoBitrate} onChange={(e) => setVideoBitrate(e.target.value)}
                     className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    disabled={outputFormat === "original"}>
+                    disabled={outputFormat === "original"}
+                    aria-disabled={outputFormat === "original"}>
                     <option value="auto">Auto (Match Source)</option>
                     <option value="8000k">8,000 kbps (Best Quality)</option>
                     <option value="5000k">5,000 kbps (Recommended for 1080p)</option>
@@ -461,13 +463,14 @@ export default function Home() {
                 >
                   {/* Drag handle + checkbox */}
                   <div className="flex items-center gap-2 pt-1 flex-shrink-0">
-                    <svg className="w-4 h-4 text-[var(--muted)] opacity-40" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 text-[var(--muted)] opacity-40" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                       <path d="M7 2a2 2 0 10.001 4.001A2 2 0 007 2zm0 6a2 2 0 10.001 4.001A2 2 0 007 8zm0 6a2 2 0 10.001 4.001A2 2 0 007 14zm6-8a2 2 0 10-.001-4.001A2 2 0 0013 6zm0 2a2 2 0 10.001 4.001A2 2 0 0013 8zm0 6a2 2 0 10.001 4.001A2 2 0 0013 14z" />
                     </svg>
                     <input
                       type="checkbox"
                       checked={selected.has(entry.id)}
                       onChange={() => toggleEntry(entry.id)}
+                      aria-label={`Select ${entry.title}`}
                       className="w-4 h-4 rounded border-[var(--card-border)] text-indigo-600 focus:ring-indigo-500"
                     />
                   </div>
@@ -483,18 +486,18 @@ export default function Home() {
                     <div className="flex flex-wrap gap-2">
                       {source?.uploader && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-cyan-300 border border-cyan-500/20">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                           {source.uploader}
                         </span>
                       )}
                       {entry.upload_date && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-violet-600/20 to-purple-600/20 text-purple-300 border border-purple-500/20">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                           {entry.upload_date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-emerald-600/20 to-green-600/20 text-emerald-300 border border-emerald-500/20">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         {formatDuration(entry.duration)}
                       </span>
                     </div>
@@ -550,7 +553,7 @@ export default function Home() {
       {phase === "queued" && (
         <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>

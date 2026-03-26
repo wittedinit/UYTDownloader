@@ -25,8 +25,12 @@
     - GPU acceleration (NVIDIA NVENC auto-detected)
     - Real-time download progress tracking
 
-    NOTE: This is a Docker Compose application with 6 services (postgres, redis, backend, worker, beat, frontend).
-    Use the Docker Compose Manager plugin to deploy, or deploy each service individually.
+    NOTE: This is a Docker Compose application with 6 services.
+    Install the Docker Compose Manager plugin from Community Apps, then add a new stack
+    pointing to this repo's docker-compose.yml. Pre-built images are available at:
+    ghcr.io/wittedinit/uytdownloader-backend:latest
+    ghcr.io/wittedinit/uytdownloader-worker:latest
+    ghcr.io/wittedinit/uytdownloader-frontend:latest
   </Overview>
   <Category>MediaApp:Video MediaApp:Music Downloaders</Category>
   <WebUI>http://[IP]:[PORT:3000]/</WebUI>

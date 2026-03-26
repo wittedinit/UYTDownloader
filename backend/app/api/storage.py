@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -18,13 +20,112 @@ from app.worker.ytdlp_wrapper import DOWNLOAD_PROFILES
 router = APIRouter(prefix="/api/storage", tags=["storage"])
 
 
-@router.get("/usage")
+# ── Response Models ───────────────────────────────────────────────────
+
+
+class DiskUsageResponse(BaseModel):
+    disk_total_gb: Optional[float] = None
+    disk_used_gb: Optional[float] = None
+    disk_free_gb: Optional[float] = None
+    disk_free_pct: Optional[float] = None
+    downloads_bytes: Optional[int] = None
+    downloads_gb: Optional[float] = None
+    downloads_file_count: Optional[int] = None
+    error: Optional[str] = None
+
+
+class RetentionPresetItem(BaseModel):
+    key: str
+    label: str
+    is_forever: bool
+
+
+class CleanupStrategyItem(BaseModel):
+    key: str
+    description: str
+
+
+class PresetsResponse(BaseModel):
+    retention_presets: list[RetentionPresetItem]
+    cleanup_strategies: list[CleanupStrategyItem]
+
+
+class DeletedFileItem(BaseModel):
+    filename: str
+    size_bytes: int
+    modified_at: Optional[float] = None
+    age_days: Optional[float] = None
+
+
+class RetentionResponse(BaseModel):
+    deleted: list[DeletedFileItem]
+    count: Optional[int] = None
+    freed_bytes: Optional[int] = None
+    freed_gb: Optional[float] = None
+    dry_run: Optional[bool] = None
+    retention: Optional[str] = None
+    message: Optional[str] = None
+
+
+class DiskGuardDeletedItem(BaseModel):
+    filename: str
+    size_bytes: int
+
+
+class DiskGuardResponse(BaseModel):
+    deleted: list[DiskGuardDeletedItem]
+    count: Optional[int] = None
+    freed_bytes: Optional[int] = None
+    freed_gb: Optional[float] = None
+    disk_free_pct_before: Optional[float] = None
+    disk_free_pct_after: Optional[float] = None
+    strategy: Optional[str] = None
+    min_free_pct: Optional[float] = None
+    dry_run: Optional[bool] = None
+    message: Optional[str] = None
+    disk_free_pct: Optional[float] = None
+
+
+class ConcurrencyModeItem(BaseModel):
+    key: str
+    label: str
+    description: str
+
+
+class ActiveProfileFull(BaseModel):
+    fragment_concurrency: int
+    request_sleep: float
+    download_sleep: float
+    max_sleep: float
+    throttle_detection_bps: int
+    retries: int
+    fragment_retries: int
+
+
+class ConcurrencyModeResponse(BaseModel):
+    mode: str
+    available_modes: list[ConcurrencyModeItem]
+    active_profile: ActiveProfileFull
+
+
+class ActiveProfileBrief(BaseModel):
+    fragment_concurrency: int
+    request_sleep: float
+    download_sleep: float
+
+
+class SetConcurrencyModeResponse(BaseModel):
+    mode: str
+    active_profile: ActiveProfileBrief
+
+
+@router.get("/usage", response_model=DiskUsageResponse)
 async def disk_usage():
     """Get disk usage stats for the downloads volume."""
     return get_disk_usage()
 
 
-@router.get("/presets")
+@router.get("/presets", response_model=PresetsResponse)
 async def get_presets():
     """Get available retention presets and cleanup strategies."""
     return {
@@ -39,7 +140,7 @@ async def get_presets():
     }
 
 
-@router.post("/retention")
+@router.post("/retention", response_model=RetentionResponse)
 async def run_retention(
     retention: str = Query("forever", description="Retention preset: 1_day, 1_week, 1_month, 3_months, 6_months, 1_year, forever"),
     dry_run: bool = Query(False, description="Preview what would be deleted without actually deleting"),
@@ -53,7 +154,7 @@ async def run_retention(
     return enforce_retention(retention, dry_run=dry_run)
 
 
-@router.post("/disk-guard")
+@router.post("/disk-guard", response_model=DiskGuardResponse)
 async def run_disk_guard(
     min_free_pct: float = Query(10.0, ge=1.0, le=50.0, description="Minimum free disk space percentage"),
     strategy: str = Query("oldest_first", description="Cleanup strategy: oldest_first, newest_first, largest_first, smallest_first"),
@@ -70,7 +171,7 @@ async def run_disk_guard(
 
 # ── Download Policy Settings ──────────────────────────────────────────
 
-@router.get("/concurrency-mode")
+@router.get("/concurrency-mode", response_model=ConcurrencyModeResponse)
 async def get_concurrency_mode():
     """Get current download concurrency mode and profile details."""
     mode = settings.concurrency_mode
@@ -110,7 +211,7 @@ class ConcurrencyModeUpdate(BaseModel):
     mode: str
 
 
-@router.put("/concurrency-mode")
+@router.put("/concurrency-mode", response_model=SetConcurrencyModeResponse)
 async def set_concurrency_mode(body: ConcurrencyModeUpdate):
     """Update the download concurrency mode. Takes effect on the next download."""
     if body.mode not in DOWNLOAD_PROFILES:

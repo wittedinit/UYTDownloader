@@ -11,7 +11,7 @@ engine = create_async_engine(settings.database_url, echo=False, pool_pre_ping=Tr
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
 # Sync engine (for Celery workers and services)
-_sync_engine = create_engine(settings.database_url_sync, echo=False, pool_pre_ping=True)
+_sync_engine = create_engine(settings.database_url_sync, echo=False, pool_pre_ping=True, pool_size=5, max_overflow=10)
 _sync_session_factory = sessionmaker(bind=_sync_engine, expire_on_commit=False)
 
 

@@ -1,14 +1,10 @@
-"""Shared synchronous DB engine for Celery workers. Avoids creating a new engine per call."""
+"""Shared synchronous DB session — re-exports from database.py.
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+This module exists for backward compatibility. All sync session usage
+should go through database.get_sync_session() which uses a single
+shared connection pool.
+"""
 
-from app.config import settings
+from app.database import _sync_engine as sync_engine, get_sync_session
 
-sync_engine = create_engine(settings.database_url_sync, pool_pre_ping=True, pool_size=5, max_overflow=10)
-sync_session_factory = sessionmaker(sync_engine, expire_on_commit=False)
-
-
-def get_sync_session() -> Session:
-    """Get a sync DB session for use in Celery workers."""
-    return sync_session_factory()
+__all__ = ["sync_engine", "get_sync_session"]
