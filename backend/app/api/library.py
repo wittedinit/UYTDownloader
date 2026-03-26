@@ -271,8 +271,8 @@ async def merge_files(req: MergeRequest):
 @router.get("/merge/{task_id}", response_model=MergeStatusResponse)
 async def get_merge_status(task_id: str):
     """Poll merge task status."""
-    from app.celery_app import celery_app
-    result = celery_app.AsyncResult(task_id)
+    from app.celery_app import celery
+    result = celery.AsyncResult(task_id)
     if result.state == "PENDING":
         return {"task_id": task_id, "status": "queued"}
     elif result.state == "STARTED" or result.state == "PROGRESS":
