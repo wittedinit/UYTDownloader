@@ -172,10 +172,13 @@ def create_jobs(
                 logger.warning("Rejected output_dir %s — not within %s", output_dir, allowed)
 
         created_jobs = []
+        skipped_archive = 0
+        skipped_not_found = 0
         for entry_id in entry_ids:
             entry = session.get(Entry, entry_id)
             if not entry:
                 logger.warning("Entry %s not found, skipping", entry_id)
+                skipped_not_found += 1
                 continue
 
             # Dedup check
@@ -194,6 +197,7 @@ def create_jobs(
                     entry.external_video_id,
                     sig,
                 )
+                skipped_archive += 1
                 continue
 
             # Create job
@@ -244,7 +248,12 @@ def create_jobs(
             })
 
         session.commit()
-        return created_jobs
+        return {
+            "jobs": created_jobs,
+            "skipped_archive": skipped_archive,
+            "skipped_not_found": skipped_not_found,
+            "total_requested": len(entry_ids),
+        }
     except Exception:
         session.rollback()
         raise

@@ -35,7 +35,7 @@ async def create_jobs(req: JobCreateRequest):
     from app.worker.tasks import run_stage
 
     # Create jobs synchronously (service uses sync session)
-    created = svc_create(
+    result = svc_create(
         entry_ids=req.entry_ids,
         format_mode=req.format_mode,
         quality=req.quality,
@@ -48,10 +48,15 @@ async def create_jobs(req: JobCreateRequest):
         video_bitrate=req.video_bitrate,
     )
 
+    created = result["jobs"]
+    skipped_archive = result["skipped_archive"]
+    skipped_not_found = result["skipped_not_found"]
+    total_requested = result["total_requested"]
+
     if not created:
         raise HTTPException(
             status_code=409,
-            detail="No new jobs created — entries may already be archived with the same settings",
+            detail=f"No new jobs created — {skipped_archive} already archived, {skipped_not_found} not found",
         )
 
     # Dispatch first stage of each job
@@ -110,7 +115,12 @@ async def create_jobs(req: JobCreateRequest):
             updated_at=j["updated_at"],
         ))
 
-    return JobCreateResponse(jobs=jobs_out)
+    return JobCreateResponse(
+        jobs=jobs_out,
+        total_requested=total_requested,
+        skipped_archive=skipped_archive,
+        skipped_not_found=skipped_not_found,
+    )
 
 
 @router.get("", response_model=JobListResponse)

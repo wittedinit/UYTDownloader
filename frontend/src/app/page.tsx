@@ -33,6 +33,9 @@ export default function Home() {
   const [outputFormat, setOutputFormat] = useState("original");
   const [videoBitrate, setVideoBitrate] = useState("auto");
   const [hydrated, setHydrated] = useState(false);
+  const [jobResult, setJobResult] = useState<{
+    created: number; skipped_archive: number; total_requested: number;
+  } | null>(null);
 
   // Restore state from sessionStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function Home() {
   const handleDownload = useCallback(async () => {
     if (selected.size === 0) return;
     try {
-      await createJobs({
+      const res = await createJobs({
         entry_ids: Array.from(selected),
         format_mode: formatMode,
         quality,
@@ -122,10 +125,21 @@ export default function Home() {
         output_format: outputFormat !== "original" ? outputFormat : undefined,
         video_bitrate: videoBitrate !== "auto" ? videoBitrate : undefined,
       });
+      setJobResult({
+        created: res.jobs.length,
+        skipped_archive: res.skipped_archive,
+        total_requested: res.total_requested,
+      });
       setPhase("queued");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create jobs");
-      setPhase("error");
+      const msg = e instanceof Error ? e.message : "Failed to create jobs";
+      if (msg.includes("already archived")) {
+        setJobResult({ created: 0, skipped_archive: selected.size, total_requested: selected.size });
+        setPhase("queued");
+      } else {
+        setError(msg);
+        setPhase("error");
+      }
     }
   }, [selected, formatMode, quality, sponsorblock, embedSubs, normalizeAudio, playbackSpeed]);
 
@@ -558,9 +572,15 @@ export default function Home() {
             </svg>
           </div>
           <p className="text-xl font-semibold mb-2">Jobs Queued</p>
-          <p className="text-sm text-[var(--muted)] mb-6">
-            {selected.size} download{selected.size !== 1 ? "s" : ""} added to the queue
+          <p className="text-sm text-[var(--muted)] mb-2">
+            {jobResult?.created ?? selected.size} download{(jobResult?.created ?? selected.size) !== 1 ? "s" : ""} added to the queue
           </p>
+          {jobResult && jobResult.skipped_archive > 0 && (
+            <p className="text-xs text-[var(--muted)] mb-6">
+              {jobResult.skipped_archive} of {jobResult.total_requested} skipped — already in archive
+            </p>
+          )}
+          {(!jobResult || jobResult.skipped_archive === 0) && <div className="mb-4" />}
           <div className="flex gap-3 justify-center">
             <a href="/jobs" className="px-5 py-2.5 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm font-medium hover:bg-[var(--card-border)] transition-colors">
               View Jobs

@@ -97,3 +97,6 @@ class JobListResponse(BaseModel):
 
 class JobCreateResponse(BaseModel):
     jobs: list[JobOut]
+    total_requested: int = 0
+    skipped_archive: int = 0
+    skipped_not_found: int = 0

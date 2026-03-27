@@ -177,7 +177,12 @@ export async function createJobs(params: {
   output_format?: string;
   video_bitrate?: string;
 }) {
-  return apiFetch<{ jobs: Job[] }>("/api/jobs", {
+  return apiFetch<{
+    jobs: Job[];
+    total_requested: number;
+    skipped_archive: number;
+    skipped_not_found: number;
+  }>("/api/jobs", {
     method: "POST",
     body: JSON.stringify(params),
   });
