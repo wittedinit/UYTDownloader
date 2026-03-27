@@ -499,18 +499,18 @@ export default function Home() {
                     <p className="text-sm font-semibold truncate mb-2">{entry.title}</p>
                     <div className="flex flex-wrap gap-2">
                       {source?.uploader && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-cyan-300 border border-cyan-500/20">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-cyan-300 border border-blue-400/30 dark:border-cyan-500/20">
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                           {source.uploader}
                         </span>
                       )}
                       {entry.upload_date && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-violet-600/20 to-purple-600/20 text-purple-300 border border-purple-500/20">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-violet-500/15 text-violet-600 dark:text-purple-300 border border-violet-400/30 dark:border-purple-500/20">
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                           {entry.upload_date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")}
                         </span>
                       )}
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-emerald-600/20 to-green-600/20 text-emerald-300 border border-emerald-500/20">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-400/30 dark:border-emerald-500/20">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         {formatDuration(entry.duration)}
                       </span>
