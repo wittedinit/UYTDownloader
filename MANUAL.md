@@ -87,6 +87,8 @@ Select a preset, then fine-tune individual options if needed.
 - **Subscribe** (purple, on source card) — creates auto-download subscription (playlists/channels only)
 - **Reset** — clears probe results and returns to empty input state
 
+**Archive dedup:** After clicking Download, you'll see a summary of how many jobs were created vs skipped. Skipped items are videos you've already downloaded with the same settings (same video ID + output configuration). This prevents re-downloading content you already have.
+
 ---
 
 ## Jobs Page
@@ -320,3 +322,7 @@ Controls pacing, fragment concurrency, and throttle detection. See Settings → 
 
 Full REST API at port 8000. Interactive docs at `http://your-server:8000/docs`.
 31 endpoints across probe, jobs, sources, subscriptions, compilations, library, storage, search, and health.
+
+### Mobile Responsive
+
+The entire web UI is responsive and works on mobile, tablet, and desktop screens. All pages adapt layout, cards, and controls for smaller viewports. Touch-friendly selection and download actions work on mobile devices.

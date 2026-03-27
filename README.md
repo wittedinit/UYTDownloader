@@ -6,6 +6,7 @@ Self-hosted Ultimate YouTube download orchestration tool. Built around yt-dlp, f
 
 ### Download
 - **Probe before download** — paste any video, playlist, or channel URL. See titles, thumbnails, channel, duration, and upload dates before committing
+- **Quick Presets** — one-click workflow templates (Best Quality, Background Listen, Archive, Mobile, Podcast) that pre-fill all options. Fine-tune any setting after selecting a preset.
 - **Video + Audio, Audio Only, or Video Only** output modes
 - **Quality selection** — Best Available, 2160p (4K), 1080p, 720p, 480p for video; 320/256/192/128/64 kbps for audio
 - **Output format conversion** — MP4/H.264, MP4/H.265, MKV, WebM/VP9 for video; MP3, M4A/AAC, Opus, FLAC for audio
@@ -13,14 +14,16 @@ Self-hosted Ultimate YouTube download orchestration tool. Built around yt-dlp, f
 - **SponsorBlock** — keep all, mark as chapters, or remove sponsor segments automatically
 - **Subtitle embedding** and **audio normalization** (EBU R128 two-pass) as optional post-processing stages
 - **Real-time progress** — live percentage and speed displayed during downloads
-- **Archive/dedup** — tracks downloads to prevent re-downloading the same content
+- **Archive dedup** — tracks downloads by video ID + output settings to prevent re-downloading the same content with the same configuration
+- **Job creation feedback** — after submitting, shows how many jobs were created vs skipped (already in archive)
 - **Reset** — clear current probe results and start fresh without reloading the page
 
 ### Jobs
 - **Real-time monitoring** — progress bars, speed, ETA for active downloads
-- **Download artifacts** — completed jobs show download links for their output files
+- **Download artifacts** — completed jobs show download links for their output files directly in the job card
 - **Cancel / Retry / Delete** — single job or bulk actions
 - **Bulk retry** — retry all failed jobs at once with one click
+- **Status filters** — filter jobs by status (All, Queued, Running, Completed, Failed)
 - **Source file tracking** — jobs show when their output file has been deleted from the library
 
 ### Merge & Compile
@@ -31,9 +34,17 @@ Self-hosted Ultimate YouTube download orchestration tool. Built around yt-dlp, f
 
 ### Library
 - **Browse all downloads** — file list with type icons, sizes, dates
+- **Search and filter** — search by filename, filter by type (video/audio), sort by date/name/size
 - **Select & Download** — individual or bulk download via browser; option to zip all selected (store mode) into a single download
 - **Select & Delete** — bulk file cleanup
 - **Select & Merge** — combine downloaded files into compilations
+
+### Search (Transcript Search)
+- **Full-text search** across video transcripts auto-indexed from YouTube subtitles and auto-captions
+- **Automatic indexing** — transcripts are fetched and indexed at download time during the finalize stage
+- **Ranked results** — PostgreSQL full-text search with weighted ranking (title > channel > transcript)
+- **Context snippets** — search results show highlighted matching text in context
+- **Coverage stats** — shows total indexed videos and estimated searchable hours
 
 ### Subscriptions
 - **Subscribe to channels/playlists** — auto-check for new content on a configurable interval
@@ -58,6 +69,22 @@ Automatically detected at runtime — no configuration needed:
 | None | `libx264` (CPU) | Fallback |
 
 GPU is used only when re-encoding is needed (SponsorBlock removal, audio normalization, format conversion, compilation). Simple merges use stream copy — no GPU required.
+
+### Browser Extension
+- **Chrome extension** included in the `/extension` directory
+- **YouTube integration** — adds a purple "UYT" button to YouTube's video action bar
+- **One-click send** — click to send the current video/playlist/channel URL to your UYTDownloader instance
+- **Popup** — configure your server URL, send URLs from any YouTube page
+- **Visual feedback** — button states for loading, success, and error
+
+### In-App Manual
+- **Searchable user guide** at `/manual` with quick-start Q&As
+- **Section navigation** — collapsible sections covering every feature
+- **Full-text filter** — type to search across all manual content
+
+### Mobile Responsive
+- **Fully responsive UI** — all pages adapt to mobile, tablet, and desktop screen sizes
+- **Touch-friendly controls** — cards, buttons, and selection actions work on mobile
 
 ---
 
@@ -163,11 +190,12 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 | Page | URL | Purpose |
 |------|-----|---------|
-| **Download** | `/` | Probe URLs, select entries, configure quality/format, download or merge. Reset button to clear and start fresh. |
-| **Jobs** | `/jobs` | Monitor progress, download completed artifacts, cancel, retry (single or bulk), delete. Bulk retry all failed jobs. |
-| **Library** | `/library` | Browse files, download individually or as zip, merge, delete (single or bulk) |
-| **Subscriptions** | `/subscriptions` | Manage auto-download subscriptions with filters |
-| **Settings** | `/settings` | Download policy mode (safe/balanced/power), disk usage, retention policy, disk guard, system health |
+| **Download** | `/` | Probe URLs, select entries, choose quick presets or configure quality/format/SponsorBlock, download or merge |
+| **Jobs** | `/jobs` | Monitor progress, download completed artifacts, cancel, retry (single or bulk), delete, filter by status |
+| **Library** | `/library` | Browse files, search/filter/sort, download individually or as zip, merge, delete |
+| **Search** | `/search` | Full-text search across video transcripts (auto-indexed from YouTube subtitles) |
+| **Subscriptions** | `/subscriptions` | Manage auto-download subscriptions with filters (shorts, live, duration, keywords) |
+| **Settings** | `/settings` | Download policy mode (safe/balanced/power), disk usage, retention policy, disk guard, SponsorBlock default, system health |
 | **Manual** | `/manual` | Comprehensive searchable user guide with quick-start Q&As |
 
 ---
@@ -212,7 +240,7 @@ Stages are added dynamically. Audio-only skips video/merge. Stages like SponsorB
 
 ## API Reference
 
-30 endpoints across 7 resource groups. Full OpenAPI docs available at `http://your-server:8000/docs`.
+31 endpoints across 8 resource groups. Full OpenAPI docs available at `http://your-server:8000/docs`.
 
 <details>
 <summary>Expand API reference</summary>
@@ -274,6 +302,11 @@ GET  /api/storage/usage                 Disk usage stats
 GET  /api/storage/presets               Available retention/strategy options
 POST /api/storage/retention             Run retention cleanup
 POST /api/storage/disk-guard            Run disk space guard cleanup
+```
+
+### Search
+```
+GET  /api/search                        Full-text search across transcripts
 ```
 
 ### Health

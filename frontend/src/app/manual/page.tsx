@@ -194,7 +194,13 @@ const SECTIONS: Section[] = [
 **Subscribe button (purple, on source card):**
 - Only appears for playlists and channels (not single videos)
 - Creates a subscription that auto-checks for new content
-- Uses your current format/quality/SponsorBlock settings`,
+- Uses your current format/quality/SponsorBlock settings
+
+**Archive dedup and feedback:**
+- After clicking Download, a summary shows how many jobs were created vs skipped
+- Skipped items are videos you've already downloaded with the same settings (same video ID + output configuration)
+- This prevents accidentally re-downloading content you already have
+- If all selected items are already archived, no jobs are created and you'll see an explanation`,
       },
     ],
   },
