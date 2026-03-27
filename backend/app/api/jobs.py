@@ -46,6 +46,7 @@ async def create_jobs(req: JobCreateRequest):
         playback_speed=req.playback_speed,
         output_format=req.output_format,
         video_bitrate=req.video_bitrate,
+        skip_dedup=req.skip_dedup,
     )
 
     created = result["jobs"]

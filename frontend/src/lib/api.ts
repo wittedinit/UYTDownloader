@@ -176,6 +176,7 @@ export async function createJobs(params: {
   playback_speed?: number;
   output_format?: string;
   video_bitrate?: string;
+  skip_dedup?: boolean;
 }) {
   return apiFetch<{
     jobs: Job[];

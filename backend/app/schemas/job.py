@@ -17,6 +17,7 @@ class JobCreateRequest(BaseModel):
     output_format: str | None = None  # mp4_h264, mp4_h265, mkv_h264, webm_vp9, mp3, m4a_aac, opus, flac
     video_bitrate: str | None = None  # 8000k, 5000k, 3000k, 1500k, 800k
     output_dir: str | None = None
+    skip_dedup: bool = False  # Force re-download even if already archived
 
 
 class JobStageOut(BaseModel):

@@ -576,15 +576,46 @@ export default function Home() {
             {jobResult?.created ?? selected.size} download{(jobResult?.created ?? selected.size) !== 1 ? "s" : ""} added to the queue
           </p>
           {jobResult && jobResult.skipped_archive > 0 && (
-            <p className="text-xs text-[var(--muted)] mb-6">
+            <p className="text-xs text-amber-400 mb-4">
               {jobResult.skipped_archive} of {jobResult.total_requested} skipped — already in archive
             </p>
           )}
           {(!jobResult || jobResult.skipped_archive === 0) && <div className="mb-4" />}
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             <a href="/jobs" className="px-5 py-2.5 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-sm font-medium hover:bg-[var(--card-border)] transition-colors">
               View Jobs
             </a>
+            {jobResult && jobResult.skipped_archive > 0 && (
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await createJobs({
+                      entry_ids: Array.from(selected),
+                      format_mode: formatMode,
+                      quality,
+                      sponsorblock_action: sponsorblock,
+                      embed_subtitles: embedSubs,
+                      normalize_audio: normalizeAudio,
+                      playback_speed: playbackSpeed,
+                      output_format: outputFormat !== "original" ? outputFormat : undefined,
+                      video_bitrate: videoBitrate !== "auto" ? videoBitrate : undefined,
+                      skip_dedup: true,
+                    });
+                    setJobResult({
+                      created: res.jobs.length,
+                      skipped_archive: res.skipped_archive,
+                      total_requested: res.total_requested,
+                    });
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Failed to create jobs");
+                    setPhase("error");
+                  }
+                }}
+                className="px-5 py-2.5 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+              >
+                Re-download {jobResult.skipped_archive} Skipped
+              </button>
+            )}
             <button
               onClick={() => { setPhase("input"); setUrl(""); setSource(null); setEntries([]); setSelected(new Set()); }}
               className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"

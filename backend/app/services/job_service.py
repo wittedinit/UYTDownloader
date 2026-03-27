@@ -150,7 +150,8 @@ def create_jobs(
     playback_speed: float = 1.0,
     output_format: str | None = None,
     video_bitrate: str | None = None,
-) -> list[dict]:
+    skip_dedup: bool = False,
+) -> dict:
     """
     Create download jobs for the given entries.
     Returns list of job dicts suitable for API response.
@@ -181,24 +182,25 @@ def create_jobs(
                 skipped_not_found += 1
                 continue
 
-            # Dedup check
+            # Dedup check (skippable via skip_dedup flag)
             sig = _compute_output_signature(
                 entry.external_video_id, format_mode, quality, sponsorblock_action
             )
-            existing = session.execute(
-                select(ArchiveRecord).where(
-                    ArchiveRecord.external_video_id == entry.external_video_id,
-                    ArchiveRecord.output_signature_hash == sig,
-                )
-            ).scalar_one_or_none()
-            if existing:
-                logger.info(
-                    "Skipping %s — already archived with signature %s",
-                    entry.external_video_id,
-                    sig,
-                )
-                skipped_archive += 1
-                continue
+            if not skip_dedup:
+                existing = session.execute(
+                    select(ArchiveRecord).where(
+                        ArchiveRecord.external_video_id == entry.external_video_id,
+                        ArchiveRecord.output_signature_hash == sig,
+                    )
+                ).scalar_one_or_none()
+                if existing:
+                    logger.info(
+                        "Skipping %s — already archived with signature %s",
+                        entry.external_video_id,
+                        sig,
+                    )
+                    skipped_archive += 1
+                    continue
 
             # Create job
             job = Job(kind=JobKind.DOWNLOAD, entry_id=entry.id, status=JobStatus.PENDING)
