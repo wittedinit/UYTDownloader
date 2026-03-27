@@ -7,6 +7,7 @@ from app.api.storage import router as storage_router
 from app.api.probe import router as probe_router
 from app.api.sources import router as sources_router
 from app.api.search import router as search_router
+from app.api.archive import router as archive_router
 from app.api.subscriptions import router as subscriptions_router
 
 api_router = APIRouter()
@@ -18,3 +19,4 @@ api_router.include_router(compilations_router)
 api_router.include_router(library_router)
 api_router.include_router(storage_router)
 api_router.include_router(search_router)
+api_router.include_router(archive_router)
