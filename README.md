@@ -39,6 +39,13 @@ Self-hosted Ultimate YouTube download orchestration tool. Built around yt-dlp, f
 - **Select & Delete** — bulk file cleanup
 - **Select & Merge** — combine downloaded files into compilations
 
+### Archive
+- **Download history browser** — view all tracked downloads with title, thumbnail, uploader, and date
+- **Metadata only** — no files are stored; the archive is a reference table to prevent duplicate downloads
+- **Search** — find records by video title or YouTube video ID
+- **Remove records** — delete individual or bulk archive entries to allow re-downloading those videos
+- **Force re-download** — when downloading a playlist with archived entries, a "Re-download Skipped" button bypasses dedup
+
 ### Search (Transcript Search)
 - **Full-text search** across video transcripts auto-indexed from YouTube subtitles and auto-captions
 - **Automatic indexing** — transcripts are fetched and indexed at download time during the finalize stage
@@ -194,6 +201,7 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 | **Jobs** | `/jobs` | Monitor progress, download completed artifacts, cancel, retry (single or bulk), delete, filter by status |
 | **Library** | `/library` | Browse files, search/filter/sort, download individually or as zip, merge, delete |
 | **Search** | `/search` | Full-text search across video transcripts (auto-indexed from YouTube subtitles) |
+| **Archive** | `/archive` | Browse download history (metadata only — no files stored), remove records to allow re-downloads |
 | **Subscriptions** | `/subscriptions` | Manage auto-download subscriptions with filters (shorts, live, duration, keywords) |
 | **Settings** | `/settings` | Download policy mode (safe/balanced/power), disk usage, retention policy, disk guard, SponsorBlock default, system health |
 | **Manual** | `/manual` | Comprehensive searchable user guide with quick-start Q&As |
@@ -240,7 +248,7 @@ Stages are added dynamically. Audio-only skips video/merge. Stages like SponsorB
 
 ## API Reference
 
-31 endpoints across 8 resource groups. Full OpenAPI docs available at `http://your-server:8000/docs`.
+34 endpoints across 9 resource groups. Full OpenAPI docs available at `http://your-server:8000/docs`.
 
 <details>
 <summary>Expand API reference</summary>
@@ -307,6 +315,14 @@ POST /api/storage/disk-guard            Run disk space guard cleanup
 ### Search
 ```
 GET  /api/search                        Full-text search across transcripts
+GET  /api/search/stats                  Index statistics (total indexed, hours)
+```
+
+### Archive
+```
+GET  /api/archive                       List archive records (metadata only)
+DELETE /api/archive/{record_id}         Remove archive record (allows re-download)
+POST /api/archive/bulk-delete           Remove multiple archive records
 ```
 
 ### Health

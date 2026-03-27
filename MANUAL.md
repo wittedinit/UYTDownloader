@@ -201,6 +201,29 @@ The stats line shows how many videos are indexed and estimated hours of searchab
 
 ---
 
+## Archive Page
+
+The Archive is a **metadata-only** reference table that prevents duplicate downloads. **No actual video or audio files are stored.**
+
+### What It Tracks
+- YouTube video ID
+- Output settings used (format, quality, SponsorBlock action)
+- Date first downloaded
+
+### Browsing
+Go to the Archive page from the sidebar to see all tracked downloads with titles, thumbnails, uploaders, and dates. Use the search bar to find records by title or video ID.
+
+### Removing Records
+To allow re-downloading a video:
+1. Find the record in the Archive page
+2. Click **Remove** on individual records, or select multiple and click **Remove from Archive**
+
+This deletes the metadata reference only — downloaded files in your Library are not affected.
+
+**Tip:** When downloading a playlist with archived entries, the confirmation screen shows a "Re-download Skipped" button that bypasses dedup without visiting the Archive page.
+
+---
+
 ## Subscriptions Page
 
 ### Creating

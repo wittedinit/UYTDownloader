@@ -397,6 +397,51 @@ Deleted files are permanently removed from the server's downloads folder.`,
     ],
   },
   {
+    id: "archive",
+    title: "Archive",
+    icon: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4",
+    content: [
+      {
+        id: "archive-overview",
+        title: "What is the Archive?",
+        body: `The Archive is a **metadata-only** reference table that prevents duplicate downloads. **No actual video or audio files are stored in the archive.**
+
+When you download a video, UYTDownloader records:
+- The YouTube video ID
+- The output settings used (format, quality, SponsorBlock action)
+- The date it was first downloaded
+
+Next time you try to download the same video with the same settings, it will be automatically skipped to save bandwidth and storage.`,
+      },
+      {
+        id: "archive-browse",
+        title: "Browsing the Archive",
+        body: `Go to the **Archive** page from the sidebar to see all tracked downloads.
+
+Each record shows:
+- Video thumbnail and title (when available)
+- Uploader name
+- Date first downloaded
+- YouTube video ID
+
+Use the **search bar** to find records by title or video ID.`,
+      },
+      {
+        id: "archive-remove",
+        title: "Removing Archive Records",
+        body: `To allow re-downloading a video that was previously downloaded:
+
+1. Find the record in the Archive page
+2. Click **Remove** on the individual record, or
+3. Select multiple records and click **Remove from Archive**
+
+This deletes the metadata reference only — it does not affect any downloaded files in your Library.
+
+**Alternative:** When downloading a playlist with archived entries, the confirmation screen shows a **"Re-download Skipped"** button that bypasses dedup for all skipped entries without visiting the Archive page.`,
+      },
+    ],
+  },
+  {
     id: "subscriptions",
     title: "Subscriptions",
     icon: "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9",
